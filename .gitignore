@@ -1,0 +1,6 @@
+
+startAuto.sh
+operateShutters.conf
+__pycache__/
+.vscode/
+.tok
