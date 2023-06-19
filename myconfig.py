@@ -19,7 +19,12 @@ class MyConfig (MyLog):
         self.CriticalLock = threading.Lock()        # Critical Lock (writing conf file)
         self.InitComplete = False
 
+        self.Rfm69ResetGPIO = 25
+        self.Rfm69SPIChannel = 0
+        self.Rfm69Enabled = False
+
         self.LogLocation = "/var/log/"
+        self.LogToConsole = False
         self.Latitude = 51.4769
         self.Longitude = 0
         self.SendRepeat = 1
@@ -50,7 +55,7 @@ class MyConfig (MyLog):
     # -------------------- MyConfig::LoadConfig-----------------------------------
     def LoadConfig(self):
 
-        parameters = {'LogLocation': str, 'Latitude': float, 'Longitude': float, 'SendRepeat': int, 'UseHttps': bool, 'HTTPPort': int, 'HTTPSPort': int, 'TXGPIO': int, 'RTS_Address': str, "Password": str}
+        parameters = {'LogLocation': str, 'LogToConsole':bool, 'Latitude': float, 'Longitude': float, 'SendRepeat': int, 'UseHttps': bool, 'HTTPPort': int, 'HTTPSPort': int, 'TXGPIO': int, 'Rfm69ResetGPIO': int, 'Rfm69SPIChannel': int, 'Rfm69Enabled': bool, 'RTS_Address': str, "Password": str}
         
         self.SetSection("General");
         for key, type in parameters.items():
