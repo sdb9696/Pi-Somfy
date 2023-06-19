@@ -1,31 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Transmit mumbi power outlet codes"""
+"""
+sdb9696: Transmitter to emulate button press to Somfy blinds.
+Initially based on the transmitter.py from https://github.com/henrythasler/sdr/blob/master/somfy/transmitter.py
+Modified to use the wavefrom creation logic from https://github.com/Nickduino/Pi-Somfy/.  The waveform logic 
+in the original of this files works but as I've forked Nickduino it's best to have only one way to create the
+waveform.  N.B. the two methods treated the address parameter differently as henrythasler reversed the order of 
+bytes.  I'm not sure which is correct but it doesn't as only using a single implementation.
+Also updated to fix the frequency to use 433.42 MHz as the original calculation was a bit off.
+
+If someone wanted to use this transmitter independantly of the rest of the Nickduino functionality only 
+the following files are needed:
+
+    rfm69.py
+    SomfyRtsWaveForm.py
+    somfyRfm68Transmitter.py (this file)
+"""
 
 import sys
-from struct import pack
+
 from time import sleep
 import pigpio as gpio
 from rfm69 import Rfm69
 import numpy as np
 import json
+from somfyRtsWaveForm import createWaveForm
+
+# define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
+RESETPINDEFAULT = 25
+DATAPINDEFAULT = 26
 
 class SomfyRfm69Tx(object):
 
-    # define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
-    RESETPINDEFAULT = 25
-    DATAPINDEFAULT = 26
-
     # define pigpio-host 
     HOST = "localhost"
-
-    COMMANDS={
-        'null': 0x00,
-        'up': 0x02,
-        'down': 0x04,
-        'stop': 0x01,
-        'prog': 0x08,
-        }
+   
 
     config=None
 
@@ -104,10 +113,12 @@ class SomfyRfm69Tx(object):
         self.pi.write(self.RESETPIN, 0)
         sleep(.005)
 
-    def sendWaveForm2(self, waveform):
+    def sendWaveForm(self, waveform):
         
         self._startTransmit()
 
+        # delete existing waveforms
+        self.pi.wave_clear()
         self.pi.wave_add_new()
 
         self.pi.wave_add_generic(waveform)
@@ -118,113 +129,62 @@ class SomfyRfm69Tx(object):
         while self.pi.wave_tx_busy():
             sleep(0.1)
 
-        self._endTransmit()
-
-    def sendWaveForm(self, waveform):
-        
-        self._startTransmit()
-
-#        self.pi.wave_add_generic(waveform)
- #       wid = self.pi.wave_create()
-  #      self.pi.wave_send_once(wid)
-
-        # send frames
-        self.pi.wave_chain(waveform)
-
-        # wait until finished
-        while self.pi.wave_tx_busy():
-            sleep(0.1)
+        self.pi.wave_clear()
 
         self._endTransmit()
+
+    
 
     def sendCommand(self, address, command, rolling_code):
         
-        key = 10
+        wf = createWaveForm(self.DATAPIN, address, command, rolling_code, 3)
 
-        # delete existing waveforms
-        self.pi.wave_clear()
-
-        # calculate frame-data from command-line arguments
-        data = pack(">BBH", key | (rolling_code & 0x0f), command << 4, rolling_code) 
-        data += pack("<I",address)[:-1]
-        frame = np.fromstring(data, dtype=np.uint8)
-
-        # checksum calculation
-        cksum = frame[0] ^ (frame[0] >> 4)
-        for i in range(1,7):
-            cksum = cksum ^ frame[i] ^ (frame[i] >> 4)
-        frame[1] = frame[1] | (cksum & 0x0f)
-        print ("Data: "+''.join('0x{:02X} '.format(x) for x in frame))
-
-        # data whitening/obfuscation
-        for i in range(1, frame.size):
-            frame[i] = frame[i] ^ frame[i-1]
-
-        print ("Frame: "+''.join('0x{:02X} '.format(x) for x in frame))
-
-        # how many consecutive frame repetitions
-        repetitions = 3
-
-        # create wakeup pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(1<<self.DATAPIN, 0, 10000), gpio.pulse(0, 1<<self.DATAPIN, 95000)])
-        wakeup = self.pi.wave_create()
-
-        # create hw_sync pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(1<<self.DATAPIN, 0, 2500), gpio.pulse(0, 1<<self.DATAPIN, 2500)])
-        hw_sync = self.pi.wave_create()
-
-        # create sw_sync pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(1<<self.DATAPIN, 0, 4850), gpio.pulse(0, 1<<self.DATAPIN, self.clock)])
-        sw_sync = self.pi.wave_create()
-
-        # create "0" pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(1<<self.DATAPIN, 0, self.clock), gpio.pulse(0, 1<<self.DATAPIN, self.clock)])
-        zero = self.pi.wave_create()
-
-        # create "1" pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(0, 1<<self.DATAPIN, self.clock), gpio.pulse(1<<self.DATAPIN, 0, self.clock)])
-        one = self.pi.wave_create()
-
-        # create "eof" pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(0, 1<<self.DATAPIN, self.clock)])
-        eof = self.pi.wave_create()
-
-        # create "inter-frame gap" pulse waveform
-        self.pi.wave_add_generic([gpio.pulse(0, 1<<self.DATAPIN, 32000)])
-        gap = self.pi.wave_create()
-
-        # create bitstream from frame
-        bits = np.where(np.unpackbits(frame) == 1, one, zero)
-
-        # assemble whole frame sequence
-        frames = np.concatenate((
-                [wakeup], 
-                [hw_sync, hw_sync], 
-                [sw_sync], 
-                bits,                   # send at least once
-                [eof],                  # start 
-                [gap],   # inter-frame gap
-                [255, 0],               # start loop
-                    [255, 0], 
-                        [hw_sync], 
-                    [255, 1, 7, 0],
-                    [sw_sync], 
-                    bits, 
-                    [eof], 
-                    [gap],   # inter-frame gap
-                [255, 1, repetitions, 0]    # repeat 
-                ))
-
-        
-        self.sendWaveForm(frames.tolist())
-        
-        # clean up
-        self.pi.wave_delete(zero)
-        self.pi.wave_delete(one)
-        self.pi.wave_delete(wakeup)
-        self.pi.wave_delete(hw_sync)
-        self.pi.wave_delete(sw_sync)
-        self.pi.wave_delete(eof)
-        self.pi.wave_delete(gap)
+        self.sendWaveForm(wf)
 
 
+COMMANDS={
+        'null': 0x00,
+        'up': 0x02,
+        'down': 0x04,
+        'stop': 0x01,
+        'prog': 0x08,
+        }
+
+def main(buttoncode):
+    """ main function """
+
+    try:   
+        # load current config
+        with open("config.json") as f:
+
+            config = json.load(f)
+    except:
+        config = {"rolling_code": 0, "address": "0xc30000"}
+
+    rc = config["rolling_code"]
+
+    # update config
+    config["rolling_code"] += 1
+
+    # write new config
+    with open("config.json", "w") as f:
+        json.dump(config, f)
+
+
+    with SomfyRfm69Tx() as s69Tx:
+
+        s69Tx.sendCommand(int(config["address"], 16), buttoncode, rc  )
+
+
+if __name__ == "__main__":
+    try:
+        if sys.argv[1] in COMMANDS:
+            main(COMMANDS[sys.argv[1]])
+        else:
+            print ("Unknown command:", sys.argv[1])
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt")
+
+    finally:
+        #print "done"
+        pass

@@ -13,6 +13,7 @@ import socket
 import signal, atexit, traceback
 import logging, logging.handlers
 import threading
+import getpass
 
 
 try:
@@ -27,6 +28,8 @@ try:
     from mymqtt import MQTT
     from shutil import copyfile
     from somfyRfm69Transmitter import SomfyRfm69Tx
+    from somfyRtsWaveForm import createWaveForm
+    from time import sleep
 
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
@@ -65,7 +68,7 @@ class Shutter(MyLog):
            self.TXGPIO=self.config.TXGPIO # 433.42 MHz emitter
         else:
            self.TXGPIO=4 # 433.42 MHz emitter on GPIO 4
-        self.frame = bytearray(7)
+
         self.callback = []
         self.shutterStateList = {}
         self.sutterStateLock = threading.Lock()
@@ -225,7 +228,7 @@ class Shutter(MyLog):
         self.callback.append(callbackFunction)
 
     def sendCommand(self, shutterId, button, repetition): #Sending a frame
-         # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps 
+    # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps 
     # to adjust the tilt. Sending the original frame and three repetitions is the smallest adjustment, sending the original
     # frame and more repetitions moves the blinds up/down for a longer time.
     # To activate the program mode (to register or de-register additional remotes) of your Somfy blinds, long press the 
@@ -248,137 +251,41 @@ class Shutter(MyLog):
             self.LogInfo ("Rolling code : " + str(code))
             self.LogInfo ("")
 
-            with SomfyRfm69Tx(25, 26) as s69Tx:
+            wf = createWaveForm(self.TXGPIO, teleco, button, code, repetition, self.log)
 
-                s69Tx.sendCommand(teleco, button, code)
+            if not (self.config.Rfm69Enabled):
 
-                #wid = self.createWaveForm(26, teleco, button, code, repetition)
+                pi = pigpio.pi() # connect to Pi
 
-                #s69Tx.sendWaveForm2(wid)
+                if not pi.connected:
+                    exit()
 
-        finally:
-           self.lock.release()
-           self.LogDebug("sendCommand: Lock released")
+                pi.wave_add_new()
+                pi.set_mode(self.TXGPIO, pigpio.OUTPUT)
 
-    def createWaveForm(self, txBcmPinNum, teleco, button, code, repetition):
-
-           checksum = 0
-
-           pi = pigpio.pi() # connect to Pi
-
-           if not pi.connected:
-              exit()
-
-          # pi.wave_add_new()
-          # pi.set_mode(self.TXGPIO, pigpio.OUTPUT)
-
- 
-           self.frame[0] = 0xA7;       # Encryption key. Doesn't matter much
-           self.frame[1] = button << 4 # Which button did  you press? The 4 LSB will be the checksum
-           self.frame[2] = code >> 8               # Rolling code (big endian)
-           self.frame[3] = (code & 0xFF)           # Rolling code
-           self.frame[4] = teleco >> 16            # Remote address
-           self.frame[5] = ((teleco >>  8) & 0xFF) # Remote address
-           self.frame[6] = (teleco & 0xFF)         # Remote address
-
-           outstring = "Frame  :    "
-           for octet in self.frame:
-              outstring = outstring + "0x%0.2X" % octet + ' '
-           self.LogInfo (outstring)
-
-           for i in range(0, 7):
-              checksum = checksum ^ self.frame[i] ^ (self.frame[i] >> 4)
-
-           checksum &= 0b1111; # We keep the last 4 bits only
-
-           self.frame[1] |= checksum;
-
-           outstring = "With cks  : "
-           for octet in self.frame:
-              outstring = outstring + "0x%0.2X" % octet + ' '
-           self.LogInfo (outstring)
-
-           for i in range(1, 7):
-              self.frame[i] ^= self.frame[i-1];
-
-           outstring = "Obfuscated :"
-           for octet in self.frame:
-              outstring = outstring + "0x%0.2X" % octet + ' '
-           self.LogInfo (outstring)
-
-           #This is where all the awesomeness is happening. You're telling the daemon what you wanna send
-           wf=[]
-           wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 9415)) # wake up pulse
-           wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 89565)) # silence
-           for i in range(2): # hardware synchronization
-              wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 2560))
-              wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 2560))
-           wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 4550)) # software synchronization
-           wf.append(pigpio.pulse(0, 1<<txBcmPinNum,  640))
-
-           for i in range (0, 56): # manchester enconding of payload data
-              if ((self.frame[int(i/8)] >> (7 - (i%8))) & 1):
-                 wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-                 wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-              else:
-                 wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-                 wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-
-           wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 30415)) # interframe gap
-
-           for j in range(1,repetition): # repeating frames
-                    for i in range(7): # hardware synchronization
-                          wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 2560))
-                          wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 2560))
-                    wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 4550)) # software synchronization
-                    wf.append(pigpio.pulse(0, 1<<txBcmPinNum,  640))
-
-                    for i in range (0, 56): # manchester enconding of payload data
-                          if ((self.frame[int(i/8)] >> (7 - (i%8))) & 1):
-                             wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-                             wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-                          else:
-                             wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-                             wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-
-                    wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 30415)) # interframe gap
-
-
-           return wf
-
-
-    def sendCommandOld(self, shutterId, button, repetition): #Sending a frame
-    # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps 
-    # to adjust the tilt. Sending the original frame and three repetitions is the smallest adjustment, sending the original
-    # frame and more repetitions moves the blinds up/down for a longer time.
-    # To activate the program mode (to register or de-register additional remotes) of your Somfy blinds, long press the 
-    # prog button (at least thirteen times after the original frame to activate the registration.
-        self.LogDebug("sendCommand: Waiting for Lock")
-        self.lock.acquire()
-        try:
-            self.LogDebug("sendCommand: Lock aquired")
-            
-
-            teleco = int(shutterId, 16)
-            code = int(self.config.Shutters[shutterId]['code'])
-
-            self.LogInfo ("Remote  :      " + "0x%0.2X" % teleco + ' (' + self.config.Shutters[shutterId]['name'] + ')')
-            self.LogInfo ("Button  :      " + "0x%0.2X" % button)
-            self.LogInfo ("Rolling code : " + str(code))
-            self.LogInfo ("")
-
-            self.config.setCode(shutterId, code+1)
-            # print (codecs.encode(shutterId, 'hex_codec'))
+                self.pi.wave_add_generic(wf)
+                wid = self.pi.wave_create()
          
-            pi.wave_send_once(wid)
-            while pi.wave_tx_busy():
-              pass
-            pi.wave_delete(wid)
+                pi.wave_send_once(wid)
 
-            pi.stop()
+                while pi.wave_tx_busy():
+                    sleep(0.1)
+
+                pi.wave_delete(wid)
+
+                pi.stop()
+            else:
+                with SomfyRfm69Tx(self.config.Rfm69ResetGPIO, self.TXGPIO, spichannel=self.config.Rfm69SPIChannel) as s69Tx:
+
+                    s69Tx.sendWaveForm(wf)
+
+
         finally:
            self.lock.release()
            self.LogDebug("sendCommand: Lock released")
+
+    
+
 
 class operateShutters(MyLog):
 
@@ -418,8 +325,9 @@ class operateShutters(MyLog):
             self.LogConsole("Failure to load configuration parameters")
             sys.exit(1)
 
+
         # log errors in this module to a file
-        self.log = SetupLogger("shutters", self.config.LogLocation + "operateShutters.log")
+        self.log = SetupLogger("shutters", self.config.LogLocation + "operateShutters-" + getpass.getuser() + ".log", stream=self.config.LogToConsole)
         self.config.log = self.log
 
         if self.IsLoaded():
@@ -452,7 +360,7 @@ class operateShutters(MyLog):
     #return true if program is already loaded
     def IsLoaded(self):
 
-        file_path = '/var/lock/'+os.path.basename(__file__)
+        file_path = '/var/lock/'+os.path.basename(__file__).replace('.','') + ".lock"
         global file_handle
 
         try:

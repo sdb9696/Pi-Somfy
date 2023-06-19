@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""RFM69-Class"""
+
+"""
+RFM69-Class
+sdb9696: Transmitter to emulate button press to Somfy blinds.
+Based on the RFM-69 class at https://github.com/henrythasler/sdr/somfy/
+"""
 
 import pigpio as gpio
 
