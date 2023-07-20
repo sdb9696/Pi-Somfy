@@ -82,7 +82,7 @@ class SomfyRfm69Tx(object):
             # just to make sure SPI is working
             rx_data = rf.read_single(0x5A)
             if rx_data != 0x55:
-                print ("SPI Error")
+                raise RuntimeError(f"Unexpected response reading SPI value, expected {0x55}, got {rx_data}.  Check RFM69 device is properly connected.")
 
             rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
@@ -102,10 +102,16 @@ class SomfyRfm69Tx(object):
             rf.write_single(0x02, 0b01101000)     # DataModul: continuous w/o bit sync, OOK, no shaping
             rf.write_single(0x01, 0b00001100)     # OpMode: SequencerOn, TX
 
+            timeout = 1
+            timespent = 0
             # wait for ready
-            while (rf.read_single(0x27) & 0x80) == 0:
+            while (rf.read_single(0x27) & 0x80) == 0 and timespent < timeout:
+                timespent += 0.005
+                sleep(.005)
                 pass
                 #print "waiting..."
+            if timespent >= timeout:
+                raise RuntimeError("Timed out waiting for ready signal after initialising RFM69")
 
     def _endTransmit(self):
         # reset transmitter
