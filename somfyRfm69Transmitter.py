@@ -45,7 +45,6 @@ class SomfyRfm69Tx(object):
         self.piconnected = False
 
         self.pi = gpio.pi(pigpiohost, pigpioport)
-        self.handle = self.pi.spi_open(spichannel, spibaudrate, 0)    # Flags: CPOL=0 and CPHA=0
         self.RESETPIN = resetBcmPinNumber
         self.DATAPIN = dataBcmPinNumber
         self.pigpiohost = pigpiohost
