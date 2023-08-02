@@ -272,9 +272,8 @@ class FlaskAppWrapper(MyLog):
         self.LogDebug("getConfig called, sending: "+json.dumps(obj))
         return obj
 
-    def generate_adhoc_ssl_context(self):
+    def generate_adhoc_ssl_context(self, ssl, crypto):
         """Generates an adhoc SSL context for the development server."""
-        #        crypto = _get_openssl_crypto_module()
         import tempfile
         import atexit
         from random import random
@@ -314,14 +313,21 @@ class FlaskAppWrapper(MyLog):
 
 
     def run(self):
+        port=self.config.HTTPPort
+        ssl_context = None
         if self.config.UseHttps:
-            import ssl
-            from OpenSSL import crypto
-            self.LogInfo("Starting secure WebServer on Port "+str(self.config.HTTPSPort))
-            self.app.run(host="0.0.0.0", port=self.config.HTTPSPort, threaded = True, ssl_context=self.generate_adhoc_ssl_context(), use_reloader = False, debug = False)
-        else:
-            self.LogInfo("Starting WebServer on Port "+str(self.config.HTTPPort))
-            self.app.run(host="0.0.0.0", threaded = True, port=self.config.HTTPPort, use_reloader = False, debug = False)
+            try:
+                import ssl
+                from OpenSSL import crypto
+                ssl_context = self.generate_adhoc_ssl_context(ssl, crypto)
+                port = self.config.HTTPSPort
+            except Exception as ex:
+                self.LogError(str(ex))
+                self.LogError("UseHttps is True but unable to generate ssl context.  Have you installed pyopenssl? pip install pyopenssl")
+
+        
+        self.LogInfo("Starting WebServer on Port "+str(port))
+        self.app.run(host="0.0.0.0", port=port, threaded = True, ssl_context=ssl_context, use_reloader = False, debug = False)
         self.LogInfo("Stopping WebServer")
 
 
