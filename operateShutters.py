@@ -36,6 +36,11 @@ except Exception as e1:
     print("Error: " + str(e1))
     sys.exit(2)
 
+if sys.version_info[0] < 3:
+    import commands as processcommands
+else:
+    import subprocess as processcommands
+
 class Shutter(MyLog):
     #Button values
     buttonUp = 0x2
@@ -65,9 +70,9 @@ class Shutter(MyLog):
             self.config = config
 
         if self.config.TXGPIO != None:
-           self.TXGPIO=self.config.TXGPIO # 433.42 MHz emitter
+            self.TXGPIO=self.config.TXGPIO # 433.42 MHz emitter
         else:
-           self.TXGPIO=4 # 433.42 MHz emitter on GPIO 4
+            self.TXGPIO=4 # 433.42 MHz emitter on GPIO 4
 
         self.callback = []
         self.shutterStateList = {}
@@ -168,27 +173,27 @@ class Shutter(MyLog):
 
         fallback = False
         if state.lastCommandDirection == 'up':
-          if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationUp:
-            durationPercentage = int(round(secondsSinceLastCommand/setupDurationUp * 100))
-            self.LogDebug("["+shutterId+"] Up duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
-            if state.position > 0: # after rise from previous position
-                newPosition = min (100 , state.position + durationPercentage)
-            else: # after rise from fully closed
-                newPosition = durationPercentage
-          else:  #fallback
-            self.LogWarn("["+shutterId+"] Too much time since up command.")
-            fallback = True
+            if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationUp:
+                durationPercentage = int(round(secondsSinceLastCommand/setupDurationUp * 100))
+                self.LogDebug("["+shutterId+"] Up duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
+                if state.position > 0: # after rise from previous position
+                    newPosition = min (100 , state.position + durationPercentage)
+                else: # after rise from fully closed
+                    newPosition = durationPercentage
+            else:  #fallback
+                self.LogWarn("["+shutterId+"] Too much time since up command.")
+                fallback = True
         elif state.lastCommandDirection == 'down':
-          if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationDown:
-            durationPercentage = int(round(secondsSinceLastCommand/setupDurationDown * 100))
-            self.LogDebug("["+shutterId+"] Down duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
-            if state.position < 100: # after lower from previous position
-                newPosition = max (0 , state.position - durationPercentage)
-            else: # after down from fully opened
-                newPosition = 100 - durationPercentage
-          else:  #fallback
-            self.LogWarn("["+shutterId+"] Too much time since down command.")
-            fallback = True
+            if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationDown:
+                durationPercentage = int(round(secondsSinceLastCommand/setupDurationDown * 100))
+                self.LogDebug("["+shutterId+"] Down duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
+                if state.position < 100: # after lower from previous position
+                    newPosition = max (0 , state.position - durationPercentage)
+                else: # after down from fully opened
+                    newPosition = 100 - durationPercentage
+            else:  #fallback
+                self.LogWarn("["+shutterId+"] Too much time since down command.")
+                fallback = True
         else: # consecutive stops
             self.LogWarn("["+shutterId+"] Stop pressed while stationary.")
             fallback = True
@@ -246,8 +251,8 @@ class Shutter(MyLog):
             # print (codecs.encode(shutterId, 'hex_codec'))
             self.config.setCode(shutterId, code+1)
 
-            self.LogInfo ("Remote  :      " + "0x%0.2X" % teleco + ' (' + self.config.Shutters[shutterId]['name'] + ')')
-            self.LogInfo ("Button  :      " + "0x%0.2X" % button)
+            self.LogInfo ("Remote  :		" + "0x%0.2X" % teleco + ' (' + self.config.Shutters[shutterId]['name'] + ')')
+            self.LogInfo ("Button  :		" + "0x%0.2X" % button)
             self.LogInfo ("Rolling code : " + str(code))
             self.LogInfo ("")
 
@@ -265,7 +270,7 @@ class Shutter(MyLog):
 
                 self.pi.wave_add_generic(wf)
                 wid = self.pi.wave_create()
-         
+        
                 pi.wave_send_once(wid)
 
                 while pi.wave_tx_busy():
@@ -281,8 +286,8 @@ class Shutter(MyLog):
 
 
         finally:
-           self.lock.release()
-           self.LogDebug("sendCommand: Lock released")
+            self.lock.release()
+            self.LogDebug("sendCommand: Lock released")
 
     
 
@@ -305,8 +310,7 @@ class operateShutters(MyLog):
         self.console = SetupLogger("shutters_console", log_file = "", stream = True)
 
         if os.geteuid() != 0:
-            self.LogConsole("You need to have root privileges to run this script.\nPlease try again, this time using 'sudo'.")
-            #sys.exit(1)
+            self.LogConsole("You are not running as sudo, you will need to ensure you have appropriate permissions for your config (i.e. ports less than 1024) or run this script as sudo")
 
         if not os.path.isfile(self.ConfigFile):
             self.LogConsole("Creating new config file : " + self.ConfigFile)
@@ -363,131 +367,132 @@ class operateShutters(MyLog):
         file_path = '/var/lock/'+os.path.basename(__file__).replace('.','') + ".lock"
         global file_handle
 
+        create_file = not os.path.exists(file_path)
         try:
-           file_handle= open(file_path, 'w')
-           fcntl.lockf(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-           return False
-        except IOError:
-           return True
+            file_handle = open(file_path, 'w' if create_file else 'r')
+            if create_file:
+                # Define the new file permissions
+                new_permissions = 0o644
+                # Change the file permissions
+                os.chmod(file_path, new_permissions)
+            fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return False
+        except IOError as err:
+            return True
 
     #--------------------- operateShutters::startPIGPIO ------------------------------
+
     def startPIGPIO(self):
-       if sys.version_info[0] < 3:
-           import commands
-           status, process = commands.getstatusoutput('sudo pidof pigpiod')
-           if status:  #  it wasn't running, so start it
-               self.LogInfo ("pigpiod was not running")
-               commands.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
-               time.sleep(0.5)
-               # check it again
-               status, process = commands.getstatusoutput('sudo pidof pigpiod')
-       else:
-           import subprocess
-           status, process = subprocess.getstatusoutput('sudo pidof pigpiod')
-           if status:  #  it wasn't running, so start it
-               self.LogInfo ("pigpiod was not running")
-               subprocess.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
-               time.sleep(0.5)
-               # check it again
-               status, process = subprocess.getstatusoutput('sudo pidof pigpiod')
+        
+        status, process = processcommands.getstatusoutput('pidof pigpiod')
+        if status:  #  it wasn't running, so start it
+            
+            if os.geteuid() == 0:
+                self.LogInfo ("pigpiod was not running, trying to start it")
+                processcommands.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
+                time.sleep(0.5)
+                # check it again
+                status, process = processcommands.getstatusoutput('pidof pigpiod')
+            else:
+                self.LogInfo ("pigpiod was not running and you are not running as sudo, try to start it from a command prompt with the following command: sudo pigpiod -l -m")
 
-       if not status:  # if it was started successfully (or was already running)...
-           pigpiod_process = process
-           self.LogInfo ("pigpiod is running, process ID is {} ".format(pigpiod_process))
+        if not status:  # if it was started successfully (or was already running)...
+            pigpiod_process = process
+            self.LogInfo ("pigpiod is running, process ID is {} ".format(pigpiod_process))
 
-           try:
-               pi = pigpio.pi()  # local GPIO only
-               if not pi.connected:
-                   self.LogError("pigpio connection could not be established. Check logs to get more details.")
-                   return False
-               else:
-                   self.LogInfo("pigpio's pi instantiated.")
-           except Exception as e:
-               start_pigpiod_exception = str(e)
-               self.LogError("problem instantiating pi: {}".format(start_pigpiod_exception))
-       else:
-           self.LogError("start pigpiod was unsuccessful.")
-           return False
-       return True
+            try:
+                pi = pigpio.pi()  # local GPIO only
+                if not pi.connected:
+                    self.LogError("pigpio connection could not be established. Check logs to get more details.")
+                    return False
+                else:
+                    self.LogInfo("pigpio's pi instantiated.")
+            except Exception as e:
+                start_pigpiod_exception = str(e)
+                self.LogError("problem instantiating pi: {}".format(start_pigpiod_exception))
+        else:
+            self.LogError("start pigpiod was unsuccessful.")
+            return False
+        return True
 
     #--------------------- operateShutters::ProcessCommand -----------------------------------------------
     def ProcessCommand(self, args):
 
-       if ((args.long == True) and not (args.press)):
-             print("ERROR: The -long option can only be specified with the -press option.\n")
-             parser.print_help()
-             
-       elif ((args.shutterName != "") and (args.down == True)):
-             self.shutter.lower(self.config.ShuttersByName[args.shutterName])
-       elif ((args.shutterName != "") and (args.up == True)):
-             self.shutter.rise(self.config.ShuttersByName[args.shutterName])
-       elif ((args.shutterName != "") and (args.stop == True)):
-             self.shutter.stop(self.config.ShuttersByName[args.shutterName])
-       elif ((args.shutterName != "") and (args.program == True)):
-             self.shutter.program(self.config.ShuttersByName[args.shutterName])
-       elif ((args.shutterName != "") and (args.demo == True)):
-             self.LogInfo ("lowering shutter for 7 seconds")
-             self.shutter.lowerPartial(self.config.ShuttersByName[args.shutterName], 7)
-             time.sleep(7)
-             self.LogInfo ("rise shutter for 7 seconds")
-             self.shutter.risePartial(self.config.ShuttersByName[args.shutterName], 7)
-       elif ((args.shutterName != "") and (args.duskdawn is not None)):
-             self.schedule.addRepeatEventBySunrise([self.config.ShuttersByName[args.shutterName]], 'up', args.duskdawn[1], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
-             self.schedule.addRepeatEventBySunset([self.config.ShuttersByName[args.shutterName]], 'down', args.duskdawn[0], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
-             self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-             self.scheduler.setDaemon(True)
-             self.scheduler.start()
-             if (args.echo == True):
-                 self.alexa.setDaemon(True)
-                 self.alexa.start()
-             if (args.mqtt == True):
-                 self.mqtt.setDaemon(True)
-                 self.mqtt.start()
-             self.scheduler.join()
-       elif ((args.shutterName != "") and (args.press)):
+        if ((args.long == True) and not (args.press)):
+            print("ERROR: The -long option can only be specified with the -press option.\n")
+            parser.print_help()
 
-             buttons = 0
+        elif ((args.shutterName != "") and (args.down == True)):
+            self.shutter.lower(self.config.ShuttersByName[args.shutterName])
+        elif ((args.shutterName != "") and (args.up == True)):
+            self.shutter.rise(self.config.ShuttersByName[args.shutterName])
+        elif ((args.shutterName != "") and (args.stop == True)):
+            self.shutter.stop(self.config.ShuttersByName[args.shutterName])
+        elif ((args.shutterName != "") and (args.program == True)):
+            self.shutter.program(self.config.ShuttersByName[args.shutterName])
+        elif ((args.shutterName != "") and (args.demo == True)):
+            self.LogInfo ("lowering shutter for 7 seconds")
+            self.shutter.lowerPartial(self.config.ShuttersByName[args.shutterName], 7)
+            time.sleep(7)
+            self.LogInfo ("rise shutter for 7 seconds")
+            self.shutter.risePartial(self.config.ShuttersByName[args.shutterName], 7)
+        elif ((args.shutterName != "") and (args.duskdawn is not None)):
+            self.schedule.addRepeatEventBySunrise([self.config.ShuttersByName[args.shutterName]], 'up', args.duskdawn[1], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+            self.schedule.addRepeatEventBySunset([self.config.ShuttersByName[args.shutterName]], 'down', args.duskdawn[0], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+            self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
+            self.scheduler.setDaemon(True)
+            self.scheduler.start()
+            if (args.echo == True):
+                self.alexa.setDaemon(True)
+                self.alexa.start()
+            if (args.mqtt == True):
+                self.mqtt.setDaemon(True)
+                self.mqtt.start()
+            self.scheduler.join()
+        elif ((args.shutterName != "") and (args.press)):
 
-             btnMap = {
-               'up': self.shutter.buttonUp,
-               'down': self.shutter.buttonDown,
-               'stop': self.shutter.buttonStop,
-               'my': self.shutter.buttonStop,
-               'program': self.shutter.buttonProg
-             }
-             for btn in args.press:
-                 buttons |= btnMap[btn]
+            buttons = 0
 
-             self.shutter.pressButtons(self.config.ShuttersByName[args.shutterName], buttons, args.long)
-       elif (args.auto == True):
-             self.schedule.loadScheudleFromConfig()
-             self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-             self.scheduler.setDaemon(True)
-             self.scheduler.start()
-             if (args.echo == True):
-                 self.alexa.setDaemon(True)
-                 self.alexa.start()
-             if (args.mqtt == True):
-                 self.mqtt.setDaemon(True)
-                 self.mqtt.start()
-             self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
-             self.webServer.run()
-       else:
-          parser.print_help()
+            btnMap = {
+                'up': self.shutter.buttonUp,
+                'down': self.shutter.buttonDown,
+                'stop': self.shutter.buttonStop,
+                'my': self.shutter.buttonStop,
+                'program': self.shutter.buttonProg
+            }
+            for btn in args.press:
+                buttons |= btnMap[btn]
 
-       if (args.echo == True):
-           self.alexa.setDaemon(True)
-           self.alexa.start()
-       if (args.mqtt == True):
-           self.mqtt.setDaemon(True)
-           self.mqtt.start()
+            self.shutter.pressButtons(self.config.ShuttersByName[args.shutterName], buttons, args.long)
+        elif (args.auto == True):
+            self.schedule.loadScheudleFromConfig()
+            self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
+            self.scheduler.setDaemon(True)
+            self.scheduler.start()
+            if (args.echo == True):
+                self.alexa.setDaemon(True)
+                self.alexa.start()
+            if (args.mqtt == True):
+                self.mqtt.setDaemon(True)
+                self.mqtt.start()
+            self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
+            self.webServer.run()
+        else:
+            parser.print_help()
 
-       if (args.echo == True):
-           self.alexa.join()
-       if (args.mqtt == True):
-           self.mqtt.join()
-       self.LogInfo ("Process Command Completed....")
-       self.Close();
+        if (args.echo == True):
+            self.alexa.setDaemon(True)
+            self.alexa.start()
+        if (args.mqtt == True):
+            self.mqtt.setDaemon(True)
+            self.mqtt.start()
+
+        if (args.echo == True):
+            self.alexa.join()
+        if (args.mqtt == True):
+            self.mqtt.join()
+        self.LogInfo ("Process Command Completed....")
+        self.Close();
 
     #---------------------operateShutters::Close----------------------------------------
     def Close(self, signum = None, frame = None):
