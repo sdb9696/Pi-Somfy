@@ -260,7 +260,7 @@ class Shutter(MyLog):
 
             if not (self.config.Rfm69Enabled):
 
-                pi = pigpio.pi() # connect to Pi
+                pi = pigpio.pi(host=self.config.PIGPIOHost, port=self.config.PIGPIOPort) 
 
                 if not pi.connected:
                     exit()
@@ -268,8 +268,8 @@ class Shutter(MyLog):
                 pi.wave_add_new()
                 pi.set_mode(self.TXGPIO, pigpio.OUTPUT)
 
-                self.pi.wave_add_generic(wf)
-                wid = self.pi.wave_create()
+                pi.wave_add_generic(wf)
+                wid = pi.wave_create()
         
                 pi.wave_send_once(wid)
 
@@ -280,7 +280,7 @@ class Shutter(MyLog):
 
                 pi.stop()
             else:
-                with SomfyRfm69Tx(self.config.Rfm69ResetGPIO, self.TXGPIO, spichannel=self.config.Rfm69SPIChannel) as s69Tx:
+                with SomfyRfm69Tx(self.config.Rfm69ResetGPIO, self.TXGPIO, spichannel=self.config.Rfm69SPIChannel, pigpiohost=self.config.PIGPIOHost, pigpioport=self.config.PIGPIOPort) as s69Tx:
 
                     s69Tx.sendWaveForm(wf)
 
@@ -338,7 +338,7 @@ class operateShutters(MyLog):
             self.LogWarn("operateShutters.py is already loaded.")
             sys.exit(1)
 
-        if not self.startPIGPIO():
+        if self.config.PIGPIOHost == "localhost" and not self.startPIGPIO():
             self.LogConsole("Not able to start PIGPIO")
             sys.exit(1)
 

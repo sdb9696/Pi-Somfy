@@ -22,7 +22,6 @@ import sys
 from time import sleep
 import pigpio as gpio
 from rfm69 import Rfm69
-import numpy as np
 import json
 from somfyRtsWaveForm import createWaveForm
 

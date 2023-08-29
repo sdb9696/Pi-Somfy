@@ -23,6 +23,9 @@ class MyConfig (MyLog):
         self.Rfm69SPIChannel = 0
         self.Rfm69Enabled = False
 
+        self.PIGPIOHost = "localhost"
+        self.PIGPIOPort = 8888
+
         self.LogLocation = "/var/log/"
         self.LogToConsole = False
         self.Latitude = 51.4769
@@ -55,7 +58,7 @@ class MyConfig (MyLog):
     # -------------------- MyConfig::LoadConfig-----------------------------------
     def LoadConfig(self):
 
-        parameters = {'LogLocation': str, 'LogToConsole':bool, 'Latitude': float, 'Longitude': float, 'SendRepeat': int, 'UseHttps': bool, 'HTTPPort': int, 'HTTPSPort': int, 'TXGPIO': int, 'Rfm69ResetGPIO': int, 'Rfm69SPIChannel': int, 'Rfm69Enabled': bool, 'RTS_Address': str, "Password": str}
+        parameters = {'LogLocation': str, 'LogToConsole':bool, 'Latitude': float, 'Longitude': float, 'SendRepeat': int, 'UseHttps': bool, 'HTTPPort': int, 'HTTPSPort': int, 'TXGPIO': int, 'Rfm69ResetGPIO': int, 'Rfm69SPIChannel': int, 'Rfm69Enabled': bool, 'PIGPIOHost': str, 'PIGPIOPort': int, 'RTS_Address': str, "Password": str}
         
         self.SetSection("General");
         for key, type in parameters.items():
