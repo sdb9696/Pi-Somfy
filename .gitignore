@@ -5,5 +5,6 @@ __pycache__/
 .vscode/
 .tok
 config.json
+*.log
 
 .cursorrules

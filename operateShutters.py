@@ -395,6 +395,7 @@ class operateShutters(MyLog):
                 status, process = processcommands.getstatusoutput('pidof pigpiod')
             else:
                 self.LogInfo ("pigpiod was not running and you are not running as sudo, try to start it from a command prompt with the following command: sudo pigpiod -l -m")
+                return True
 
         if not status:  # if it was started successfully (or was already running)...
             pigpiod_process = process
