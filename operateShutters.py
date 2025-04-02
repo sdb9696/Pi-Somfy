@@ -14,7 +14,8 @@ import signal, atexit, traceback
 import logging, logging.handlers
 import threading
 import getpass
-
+import click
+from typing import List, Optional, Tuple
 
 try:
     from myconfig import MyConfig
@@ -421,7 +422,7 @@ class operateShutters(MyLog):
 
         if ((args.long == True) and not (args.press)):
             print("ERROR: The -long option can only be specified with the -press option.\n")
-            parser.print_help()
+            raise click.UsageError("The -long option can only be specified with the -press option.")
 
         elif ((args.shutterName != "") and (args.down == True)):
             self.shutter.lower(self.config.ShuttersByName[args.shutterName])
@@ -479,7 +480,7 @@ class operateShutters(MyLog):
             self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
             self.webServer.run()
         else:
-            parser.print_help()
+            raise click.UsageError("No arguments passed to operateShutters")
 
         if (args.echo == True):
             self.alexa.setDaemon(True)
@@ -533,30 +534,116 @@ class operateShutters(MyLog):
 
 #------------------- Command-line interface for monitor ------------------------
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='operate Somfy Shutters.')
-    parser.add_argument('shutterName', nargs='?', help='Name of the Shutter')
-    parser.add_argument('-config', '-c', dest='ConfigFile', default=os.getcwd()+'/operateShutters.conf', help='Name of the Config File (incl full Path)')
-    parser.add_argument('-up', '-u', help='Raise the Shutter', action='store_true')
-    parser.add_argument('-down', '-d', help='lower the Shutter', action='store_true')
-    parser.add_argument('-stop', '-s', help='stop the Shutter', action='store_true')
-    parser.add_argument('-program', '-p', help='program a new Shutter', action='store_true')
-    parser.add_argument('-press', help='Simulate a press of the specified remote buttons (\'up\', \'down\', \'stop\'/\'my\', and \'program\'). You can specify multiple buttons to activate setup operations. This does not update the known state of the blinds, so should not be used for ordinary raise and lower operations.', metavar='BTN', nargs='+', type=str)
-    parser.add_argument('-long', help='When used with the -press option, simulates a long press, instead of a short press.', action='store_true')
-    parser.add_argument('-demo', help='lower the Shutter, Stop after 7 second, then raise the Shutter', action='store_true')
-    parser.add_argument('-duskdawn', '-dd', type=int, nargs=2, help='Automatically lower the shutter at sunset and rise the shutter at sunrise, provide the evening delay and morning delay in minutes each')
-    parser.add_argument('-auto', '-a', help='Run schedule based on config. Also will start up the web-server which can be used to setup the schedule. Try: https://'+socket.gethostname(), action='store_true')
-    parser.add_argument('-echo', '-e', help='Enable Amazon Alexa (Echo) integration', action='store_true')
-    parser.add_argument('-mqtt', '-m', help='Enable MQTT integration', action='store_true')
-    args = parser.parse_args()
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.argument("shutter_name", required=False)
+ # -config option needs to preceed other config_file option or will overwite the default
+@click.option("-config", "config_file", hidden=True)
+@click.option(
+    "-c",
+    "--config",
+    "config_file",
+    default=os.getcwd() + "/operateShutters.conf",
+    help="Name of the Config File (incl full Path)",
+    type=click.Path(exists=True),
+)
+@click.option("-u", "--up", is_flag=True, help="Raise the Shutter")
+@click.option("-up", hidden=True, is_flag=True)
+@click.option("-d", "--down", is_flag=True, help="Lower the Shutter")
+@click.option("-down", hidden=True, is_flag=True)
+@click.option("-s", "--stop", is_flag=True, help="Stop the Shutter")
+@click.option("-stop", hidden=True, is_flag=True)
+@click.option("-p", "--program", is_flag=True, help="Program a new Shutter")
+@click.option("-program", hidden=True, is_flag=True)
+@click.option(
+    "--press",
+    multiple=True,
+    type=str,
+    help="Simulate a press of the specified remote buttons ('up', 'down', 'stop'/'my', and 'program'). "
+    "You can specify multiple buttons to activate setup operations. "
+    "This does not update the known state of the blinds, so should not be used for ordinary raise and lower operations.",
+)
+@click.option("-press", hidden=True, multiple=True, type=str)
+@click.option(
+    "--long",
+    is_flag=True,
+    help="When used with the --press option, simulates a long press, instead of a short press.",
+)
+@click.option("-long", hidden=True, is_flag=True)
+@click.option(
+    "--demo",
+    is_flag=True,
+    help="Lower the Shutter, Stop after 7 seconds, then raise the Shutter",
+)
+@click.option("-demo", hidden=True, is_flag=True)
+@click.option(
+    "--duskdawn",
+    "-dd",
+    nargs=2,
+    type=int,
+    help="Automatically lower the shutter at sunset and rise the shutter at sunrise, "
+    "provide the evening delay and morning delay in minutes each",
+)
+@click.option("-duskdawn", hidden=True, nargs=2, type=int)
+@click.option(
+    "-a",
+    "--auto",
+    is_flag=True,
+    help=f"Run schedule based on config. Also will start up the web-server which can be used to setup the schedule. "
+    f"Try: https://{socket.gethostname()}",
+)
+@click.option("-auto", hidden=True, is_flag=True)
+@click.option("-e", "--echo", is_flag=True, help="Enable Amazon Alexa (Echo) integration")
+@click.option("-echo", hidden=True, is_flag=True)
+@click.option("-m", "--mqtt", is_flag=True, help="Enable MQTT integration")
+@click.option("-mqtt", hidden=True, is_flag=True)
+def main(
+    shutter_name: Optional[str],
+    config_file: str,
+    up: bool,
+    down: bool,
+    stop: bool,
+    program: bool,
+    press: List[str],
+    long: bool,
+    demo: bool,
+    duskdawn: Optional[Tuple[int, int]],
+    auto: bool,
+    echo: bool,
+    mqtt: bool,
+) -> None:
+    """
+    Operate Somfy Shutters via command-line interface.
 
-    #Start things up
-    MyShutter = operateShutters(args = args)
+    This command-line tool allows control and automation of Somfy Shutters with various options
+    for manual control, scheduling, and integration with external services like Alexa and MQTT.
+    """
+    # Create a simple args object to mimic argparse's behavior
+    class Args:
+        def __init__(self):
+            self.shutterName = shutter_name
+            self.ConfigFile = config_file
+            self.up = up
+            self.down = down
+            self.stop = stop
+            self.program = program
+            self.press = press if press else None
+            self.long = long
+            self.demo = demo
+            self.duskdawn = duskdawn
+            self.auto = auto
+            self.echo = echo
+            self.mqtt = mqtt
+
+    # Start things up
+    my_shutter = operateShutters(args=Args())
 
     try:
-        while not MyShutter.ProgramComplete:
+        while not my_shutter.ProgramComplete:
             time.sleep(0.01)
-    except:
+    except Exception:
         sys.exit(1)
     
     sys.exit(0)
+
+if __name__ == "__main__":
+    main()
