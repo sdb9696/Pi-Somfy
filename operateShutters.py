@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
 
-import sys, re, argparse
+import sys
+import re
+import argparse
 import fcntl
 import os
 import locale
@@ -10,12 +11,16 @@ import datetime
 import ephem
 import pigpio
 import socket
-import signal, atexit, traceback
-import logging, logging.handlers
+import signal
+import atexit
+import traceback
+import logging
+import logging.handlers
 import threading
 import getpass
 import click
-from typing import List, Optional, Tuple
+import subprocess
+from typing import Optional
 
 try:
     from myconfig import MyConfig
@@ -31,16 +36,9 @@ try:
     from somfyRfm69Transmitter import SomfyRfm69Tx
     from somfyRtsWaveForm import createWaveForm
     from time import sleep
-
-except Exception as e1:
-    print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
-    print("Error: " + str(e1))
+except Exception as e:
+    print(f"\n\nThis program requires the modules located from the same github repository that are not present.\nError: {e}")
     sys.exit(2)
-
-if sys.version_info[0] < 3:
-    import commands as processcommands
-else:
-    import subprocess as processcommands
 
 class Shutter(MyLog):
     #Button values
@@ -63,7 +61,7 @@ class Shutter(MyLog):
             self.lastCommandTime = time.monotonic()
 
     def __init__(self, log = None, config = None):
-        super(Shutter, self).__init__()
+        super().__init__()
         self.lock = threading.Lock()
         if log != None:
             self.log = log
@@ -233,7 +231,7 @@ class Shutter(MyLog):
     def registerCallBack(self, callbackFunction):
         self.callback.append(callbackFunction)
 
-    def sendCommand(self, shutterId, button, repetition): #Sending a frame
+    def sendCommand(self, shutterId: str, button: int, repetition: int): #Sending a frame
     # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps 
     # to adjust the tilt. Sending the original frame and three repetitions is the smallest adjustment, sending the original
     # frame and more repetitions moves the blinds up/down for a longer time.
@@ -252,10 +250,10 @@ class Shutter(MyLog):
             # print (codecs.encode(shutterId, 'hex_codec'))
             self.config.setCode(shutterId, code+1)
 
-            self.LogInfo ("Remote  :		" + "0x%0.2X" % teleco + ' (' + self.config.Shutters[shutterId]['name'] + ')')
-            self.LogInfo ("Button  :		" + "0x%0.2X" % button)
-            self.LogInfo ("Rolling code : " + str(code))
-            self.LogInfo ("")
+            self.LogInfo(f"Remote  :       0x{teleco:02X} ({self.config.Shutters[shutterId]['name']})")
+            self.LogInfo(f"Button  :       0x{button:02X}")
+            self.LogInfo(f"Rolling code : {code}")
+            self.LogInfo("")
 
             wf = createWaveForm(self.TXGPIO, teleco, button, code, repetition, self.log)
 
@@ -264,7 +262,7 @@ class Shutter(MyLog):
                 pi = pigpio.pi(host=self.config.PIGPIOHost, port=self.config.PIGPIOPort) 
 
                 if not pi.connected:
-                    exit()
+                    sys.exit(1)
 
                 pi.wave_add_new()
                 pi.set_mode(self.TXGPIO, pigpio.OUTPUT)
@@ -296,7 +294,7 @@ class Shutter(MyLog):
 class operateShutters(MyLog):
 
     def __init__(self, args = None):
-        super(operateShutters, self).__init__()
+        super().__init__()
         self.ProgramName = "operate Somfy Shutters"
         self.Version = "Unknown"
         self.log = None
@@ -378,22 +376,22 @@ class operateShutters(MyLog):
                 os.chmod(file_path, new_permissions)
             fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return False
-        except IOError as err:
+        except OSError as err:
             return True
 
     #--------------------- operateShutters::startPIGPIO ------------------------------
 
     def startPIGPIO(self):
         
-        status, process = processcommands.getstatusoutput('pidof pigpiod')
+        status, process = subprocess.getstatusoutput('pidof pigpiod')
         if status:  #  it wasn't running, so start it
             
             if os.geteuid() == 0:
                 self.LogInfo ("pigpiod was not running, trying to start it")
-                processcommands.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
+                subprocess.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
                 time.sleep(0.5)
                 # check it again
-                status, process = processcommands.getstatusoutput('pidof pigpiod')
+                status, process = subprocess.getstatusoutput('pidof pigpiod')
             else:
                 self.LogInfo ("pigpiod was not running and you are not running as sudo, try to start it from a command prompt with the following command: sudo pigpiod -l -m")
                 return True
@@ -442,13 +440,13 @@ class operateShutters(MyLog):
             self.schedule.addRepeatEventBySunrise([self.config.ShuttersByName[args.shutterName]], 'up', args.duskdawn[1], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
             self.schedule.addRepeatEventBySunset([self.config.ShuttersByName[args.shutterName]], 'down', args.duskdawn[0], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
             self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-            self.scheduler.setDaemon(True)
+            self.scheduler.daemon = True
             self.scheduler.start()
             if (args.echo == True):
-                self.alexa.setDaemon(True)
+                self.alexa.daemon = True
                 self.alexa.start()
             if (args.mqtt == True):
-                self.mqtt.setDaemon(True)
+                self.mqtt.daemon = True
                 self.mqtt.start()
             self.scheduler.join()
         elif ((args.shutterName != "") and (args.press)):
@@ -469,13 +467,13 @@ class operateShutters(MyLog):
         elif (args.auto == True):
             self.schedule.loadScheudleFromConfig()
             self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-            self.scheduler.setDaemon(True)
+            self.scheduler.daemon = True
             self.scheduler.start()
             if (args.echo == True):
-                self.alexa.setDaemon(True)
+                self.alexa.daemon = True
                 self.alexa.start()
             if (args.mqtt == True):
-                self.mqtt.setDaemon(True)
+                self.mqtt.daemon = True
                 self.mqtt.start()
             self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
             self.webServer.run()
@@ -483,10 +481,10 @@ class operateShutters(MyLog):
             raise click.UsageError("No arguments passed to operateShutters")
 
         if (args.echo == True):
-            self.alexa.setDaemon(True)
+            self.alexa.daemon = True
             self.alexa.start()
         if (args.mqtt == True):
-            self.mqtt.setDaemon(True)
+            self.mqtt.daemon = True
             self.mqtt.start()
 
         if (args.echo == True):
@@ -536,13 +534,13 @@ class operateShutters(MyLog):
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("shutter_name", required=False)
- # -config option needs to preceed other config_file option or will overwite the default
+# -config option needs to preceed other config_file option or will overwite the default
 @click.option("-config", "config_file", hidden=True)
 @click.option(
     "-c",
     "--config",
     "config_file",
-    default=os.getcwd() + "/operateShutters.conf",
+    default=f"{os.getcwd()}/operateShutters.conf",
     help="Name of the Config File (incl full Path)",
     type=click.Path(exists=True),
 )
@@ -603,10 +601,10 @@ def main(
     down: bool,
     stop: bool,
     program: bool,
-    press: List[str],
+    press: tuple[str, ...],
     long: bool,
     demo: bool,
-    duskdawn: Optional[Tuple[int, int]],
+    duskdawn: Optional[tuple[int, int]],
     auto: bool,
     echo: bool,
     mqtt: bool,
