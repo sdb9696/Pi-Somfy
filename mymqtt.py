@@ -166,7 +166,8 @@ class MQTT(threading.Thread, MyLog):
                 break
             except Exception as e:
                 error += 1
-                self.LogInfo("Exception in MQTT connect " + str(error) + ": "+ str(e.args))
+                if error == 1:
+                    self.LogInfo("Exception in MQTT connect, will retry " + str(error_failure_count) + " times, " + str(error) + ": "+ str(e.args))
                 if error >= error_failure_count:
                     self.LogError(f"MQTT connect error count exceeded failure threshold of {error_failure_count}.  MQQT functionality will not be active.  Have you installed mosquitto?")
                     return

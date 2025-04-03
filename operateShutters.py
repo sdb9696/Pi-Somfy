@@ -476,23 +476,12 @@ class operateShutters(MyLog):
                 self.mqtt.daemon = True
                 self.mqtt.start()
             self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
-            self.webServer.run()
+            self.webServer.daemon = True
+            self.webServer.start()
+
         else:
             raise click.UsageError("No arguments passed to operateShutters")
 
-        if (args.echo == True):
-            self.alexa.daemon = True
-            self.alexa.start()
-        if (args.mqtt == True):
-            self.mqtt.daemon = True
-            self.mqtt.start()
-
-        if (args.echo == True):
-            self.alexa.join()
-        if (args.mqtt == True):
-            self.mqtt.join()
-        self.LogInfo ("Process Command Completed....")
-        self.Close();
 
     #---------------------operateShutters::Close----------------------------------------
     def Close(self, signum = None, frame = None):
@@ -529,6 +518,10 @@ class operateShutters(MyLog):
             sys.exit(0)
         except:
             pass
+
+    def LoopUntilComplete(self):
+        while not self.ProgramComplete:
+            time.sleep(0.01)
 
 #------------------- Command-line interface for monitor ------------------------
 
@@ -636,8 +629,10 @@ def main(
     my_shutter = operateShutters(args=Args())
 
     try:
-        while not my_shutter.ProgramComplete:
-            time.sleep(0.01)
+        my_shutter.LoopUntilComplete()
+
+        my_shutter.Close();
+
     except Exception:
         sys.exit(1)
     

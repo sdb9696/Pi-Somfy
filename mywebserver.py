@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 import logging
+import threading
+
 try:
     from flask import Flask, render_template, request, Response, jsonify, json
 except Exception as e1:
@@ -30,11 +32,12 @@ class EndpointAction():
         return self.response
 
 
-class FlaskAppWrapper(MyLog):
+class FlaskAppWrapper(threading.Thread,MyLog):
     app = None
     CriticalLock = None
 
     def __init__(self, name = __name__, static_url_path = '', log = None, shutter = None, schedule = None, config = None):
+        threading.Thread.__init__(self, name="Web Server")
         if log != None:
             self.log = log
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
