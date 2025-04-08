@@ -17,7 +17,7 @@ from copy import deepcopy
 
 try:
     # pip3 install paho-mqtt
-    from mylog import MyLog
+    from .mylog import MyLog
     import paho.mqtt.client as paho
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")

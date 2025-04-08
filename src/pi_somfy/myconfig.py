@@ -6,7 +6,7 @@ try:
 except ImportError as e:
     from configparser import RawConfigParser
 
-from mylog import MyLog
+from .mylog import MyLog
 
 class MyConfig (MyLog):
     #---------------------MyConfig::__init__------------------------------------

@@ -9,16 +9,13 @@ All commands should be run from the source code root directory. Only runs on lin
 2. Install environment
 
 ```
-uv venv .venv
-./venv/bin/activate
-uv pip install -r requirements.txt
-uv pip install -r requirements_dev.txt
+uv sync
 ```
 
 3. Run the web server
 
 ```
-python -m operateShutters -a
+uv run pi-somfy -a
 ```
 
 4. View the website
@@ -30,7 +27,7 @@ http://localhost:8080
 N.B. the tests will briefly spin up a local flask web server, if 8080 is not available they could fail.
 
 ```
-pytest
+uv run pytest
 ```
 
 [Full instructions for setting up with Somfy blinds](README_FULL.md)

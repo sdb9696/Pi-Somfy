@@ -23,18 +23,18 @@ import subprocess
 from typing import Optional
 
 try:
-    from myconfig import MyConfig
-    from mylog import SetupLogger
-    from mylog import MyLog
-    from myscheduler import Event
-    from myscheduler import Schedule
-    from myscheduler import Scheduler
-    from mywebserver import FlaskAppWrapper
-    from myalexa import Alexa
-    from mymqtt import MQTT
+    from .myconfig import MyConfig
+    from .mylog import SetupLogger
+    from .mylog import MyLog
+    from .myscheduler import Event
+    from .myscheduler import Schedule
+    from .myscheduler import Scheduler
+    from .mywebserver import FlaskAppWrapper
+    from .myalexa import Alexa
+    from .mymqtt import MQTT
     from shutil import copyfile
-    from somfyRfm69Transmitter import SomfyRfm69Tx
-    from somfyRtsWaveForm import createWaveForm
+    from .somfyRfm69Transmitter import SomfyRfm69Tx
+    from .somfyRtsWaveForm import createWaveForm
     from time import sleep
 except Exception as e:
     print(f"\n\nThis program requires the modules located from the same github repository that are not present.\nError: {e}")
@@ -313,7 +313,7 @@ class operateShutters(MyLog):
 
         if not os.path.isfile(self.ConfigFile):
             self.LogConsole("Creating new config file : " + self.ConfigFile)
-            defaultConfigFile = os.path.dirname(os.path.realpath(__file__))+'/defaultConfig.conf'
+            defaultConfigFile = os.path.dirname(os.path.realpath(__file__))+'/config/defaultConfig.conf'
             print(defaultConfigFile);
             if not os.path.isfile(defaultConfigFile):
                 self.LogConsole("Failure to create new config file: "+defaultConfigFile)
@@ -571,7 +571,7 @@ class operateShutters(MyLog):
     "-c",
     "--config",
     "config_file",
-    default=f"{os.getcwd()}/operateShutters.conf",
+    default=f"{os.getcwd()}/config/operateShutters.conf",
     help="Name of the Config File (incl full Path)",
     type=click.Path(exists=True),
 )

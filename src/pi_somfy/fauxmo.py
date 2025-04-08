@@ -38,7 +38,7 @@ import urllib
 import uuid
 
 try:
-    from mylog import MyLog
+    from .mylog import MyLog
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))

@@ -15,7 +15,7 @@ import logging, logging.handlers
 import threading
 
 try:
-    from mylog import MyLog
+    from .mylog import MyLog
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))

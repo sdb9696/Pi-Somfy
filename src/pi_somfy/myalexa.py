@@ -18,9 +18,9 @@ import signal, atexit, subprocess, traceback
 import threading
 
 try:
-    from mylog import MyLog
-    import fauxmo
-    from fauxmo import debounce_handler
+    from .mylog import MyLog
+    from . import fauxmo
+    from .fauxmo import debounce_handler
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))

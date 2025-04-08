@@ -1,6 +1,6 @@
 import pytest
 from click.testing import CliRunner
-from operateShutters import main, Shutter
+from pi_somfy.operateShutters import main, Shutter
 from unittest.mock import patch, Mock
 
 
@@ -11,7 +11,7 @@ def test_cli_services():
         pass
 
     with runner.isolated_filesystem():
-        with patch('operateShutters.operateShutters.LoopUntilComplete', return_value=None) as mock_loop_until_complete:
+        with patch('pi_somfy.operateShutters.operateShutters.LoopUntilComplete', return_value=None) as mock_loop_until_complete:
             res = runner.invoke(
                 main, ["--auto", "--echo", "--mqtt"], catch_exceptions=False,
             )
@@ -30,7 +30,7 @@ def test_cli_press():
 
     with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
         res = runner.invoke(
-            main, ["TestShutter", "--press", "up", "--press", "down", "--config", "test_config.conf"], catch_exceptions=False,
+            main, ["TestShutter", "--press", "up", "--press", "down", "--config", "config/test_config.conf"], catch_exceptions=False,
         )
 
     web_server_msg = "Starting WebServer on Port 8080"

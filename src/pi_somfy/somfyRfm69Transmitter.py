@@ -21,9 +21,9 @@ import sys
 
 from time import sleep
 import pigpio as gpio
-from rfm69 import Rfm69
+from .rfm69 import Rfm69
 import json
-from somfyRtsWaveForm import createWaveForm
+from .somfyRtsWaveForm import createWaveForm
 
 # define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
 RESETPINDEFAULT = 25
