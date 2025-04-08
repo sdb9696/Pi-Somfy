@@ -417,70 +417,108 @@ class operateShutters(MyLog):
 
     #--------------------- operateShutters::ProcessCommand -----------------------------------------------
     def ProcessCommand(self, args):
+        """Process command-line arguments to control shutters or start services."""
+        # Validate long press option
+        if args.long and not args.press:
+            raise click.UsageError("The --long option requires the -press option.")
+        if args.auto and args.shutterName:
+            raise click.UsageError("The --auto option can not be provided with a shutter name.")        
 
-        if ((args.long == True) and not (args.press)):
-            print("ERROR: The -long option can only be specified with the -press option.\n")
-            raise click.UsageError("The -long option can only be specified with the -press option.")
+        # Handle shutter-specific commands
+        if args.shutterName:
+            shutter_id = self.config.ShuttersByName.get(args.shutterName)
+            if not shutter_id:
+                raise click.ClickException(f"Shutter '{args.shutterName}' not found in config.")
 
-        elif ((args.shutterName != "") and (args.down == True)):
-            self.shutter.lower(self.config.ShuttersByName[args.shutterName])
-        elif ((args.shutterName != "") and (args.up == True)):
-            self.shutter.rise(self.config.ShuttersByName[args.shutterName])
-        elif ((args.shutterName != "") and (args.stop == True)):
-            self.shutter.stop(self.config.ShuttersByName[args.shutterName])
-        elif ((args.shutterName != "") and (args.program == True)):
-            self.shutter.program(self.config.ShuttersByName[args.shutterName])
-        elif ((args.shutterName != "") and (args.demo == True)):
-            self.LogInfo ("lowering shutter for 7 seconds")
-            self.shutter.lowerPartial(self.config.ShuttersByName[args.shutterName], 7)
-            time.sleep(7)
-            self.LogInfo ("rise shutter for 7 seconds")
-            self.shutter.risePartial(self.config.ShuttersByName[args.shutterName], 7)
-        elif ((args.shutterName != "") and (args.duskdawn is not None)):
-            self.schedule.addRepeatEventBySunrise([self.config.ShuttersByName[args.shutterName]], 'up', args.duskdawn[1], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
-            self.schedule.addRepeatEventBySunset([self.config.ShuttersByName[args.shutterName]], 'down', args.duskdawn[0], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
-            self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-            self.scheduler.daemon = True
-            self.scheduler.start()
-            if (args.echo == True):
-                self.alexa.daemon = True
-                self.alexa.start()
-            if (args.mqtt == True):
-                self.mqtt.daemon = True
-                self.mqtt.start()
-            self.scheduler.join()
-        elif ((args.shutterName != "") and (args.press)):
+            if args.down:
+                self.shutter.lower(shutter_id)
+            elif args.up:
+                self.shutter.rise(shutter_id)
+            elif args.stop:
+                self.shutter.stop(shutter_id)
+            elif args.program:
+                self.shutter.program(shutter_id)
+            elif args.demo:
+                self._run_demo(shutter_id)
+            elif args.duskdawn:
+                self._schedule_dusk_dawn(args,shutter_id, args.duskdawn)
+            elif args.press:
+                self._press_buttons(shutter_id, args.press, args.long)
+            return  # Exit after handling shutter command
 
-            buttons = 0
+        # Handle auto mode
+        if args.auto:
+            self._start_auto_mode(args)
+            return
 
-            btnMap = {
-                'up': self.shutter.buttonUp,
-                'down': self.shutter.buttonDown,
-                'stop': self.shutter.buttonStop,
-                'my': self.shutter.buttonStop,
-                'program': self.shutter.buttonProg
-            }
-            for btn in args.press:
-                buttons |= btnMap[btn]
+        # If no valid arguments provided
+        raise click.UsageError("No valid arguments passed to operateShutters")
 
-            self.shutter.pressButtons(self.config.ShuttersByName[args.shutterName], buttons, args.long)
-        elif (args.auto == True):
-            self.schedule.loadScheudleFromConfig()
-            self.scheduler = Scheduler(kwargs={'log':self.log, 'schedule':self.schedule, 'shutter': self.shutter, 'config': self.config})
-            self.scheduler.daemon = True
-            self.scheduler.start()
-            if (args.echo == True):
-                self.alexa.daemon = True
-                self.alexa.start()
-            if (args.mqtt == True):
-                self.mqtt.daemon = True
-                self.mqtt.start()
-            self.webServer = FlaskAppWrapper(name='WebServer', static_url_path=os.path.dirname(os.path.realpath(__file__))+'/html', log = self.log, shutter = self.shutter, schedule = self.schedule, config = self.config)
-            self.webServer.daemon = True
-            self.webServer.start()
+    def _run_demo(self, shutter_id):
+        """Run a demo sequence for the shutter."""
+        self.LogInfo("Lowering shutter for 7 seconds")
+        self.shutter.lowerPartial(shutter_id, 7)
+        time.sleep(7)
+        self.LogInfo("Raising shutter for 7 seconds")
+        self.shutter.risePartial(shutter_id, 7)
 
-        else:
-            raise click.UsageError("No arguments passed to operateShutters")
+    def _schedule_dusk_dawn(self, args, shutter_id, dusk_dawn_offsets):
+        """Schedule dusk and dawn events for the shutter."""
+        weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        self.schedule.addRepeatEventBySunrise([shutter_id], 'up', dusk_dawn_offsets[1], weekdays)
+        self.schedule.addRepeatEventBySunset([shutter_id], 'down', dusk_dawn_offsets[0], weekdays)
+        self._start_scheduler()
+        self._start_optional_services(args)
+
+    def _press_buttons(self, shutter_id, buttons, long_press):
+        """Press specified buttons on the shutter."""
+        button_map = {
+            'up': self.shutter.buttonUp,
+            'down': self.shutter.buttonDown,
+            'stop': self.shutter.buttonStop,
+            'my': self.shutter.buttonStop,
+            'program': self.shutter.buttonProg
+        }
+        combined_buttons = 0
+        for btn in buttons:
+            combined_buttons |= button_map[btn]
+        self.shutter.pressButtons(shutter_id, combined_buttons, long_press)
+
+    def _start_scheduler(self):
+        """Initialize and start the scheduler."""
+        self.scheduler = Scheduler(kwargs={
+            'log': self.log,
+            'schedule': self.schedule,
+            'shutter': self.shutter,
+            'config': self.config
+        })
+        self.scheduler.daemon = True
+        self.scheduler.start()
+
+    def _start_optional_services(self, args):
+        """Start optional services (Alexa, MQTT) if enabled."""
+        if args.echo:
+            self.alexa.daemon = True
+            self.alexa.start()
+        if args.mqtt:
+            self.mqtt.daemon = True
+            self.mqtt.start()
+
+    def _start_auto_mode(self, args):
+        """Start the system in auto mode with all services."""
+        self.schedule.loadScheudleFromConfig()
+        self._start_scheduler()
+        self._start_optional_services(args)
+        self.webServer = FlaskAppWrapper(
+            name='WebServer',
+            static_url_path=os.path.dirname(os.path.realpath(__file__)) + '/html',
+            log=self.log,
+            shutter=self.shutter,
+            schedule=self.schedule,
+            config=self.config
+        )
+        self.webServer.daemon = True
+        self.webServer.start()
 
 
     #---------------------operateShutters::Close----------------------------------------
