@@ -21,6 +21,7 @@ import getpass
 import click
 import subprocess
 from typing import Optional
+from pathlib import Path
 
 try:
     from .myconfig import MyConfig
@@ -511,7 +512,7 @@ class operateShutters(MyLog):
         self._start_optional_services(args)
         self.webServer = FlaskAppWrapper(
             name='WebServer',
-            static_url_path=os.path.dirname(os.path.realpath(__file__)) + '/html',
+            static_url_path=Path(__file__).parent.parent.parent / 'html',
             log=self.log,
             shutter=self.shutter,
             schedule=self.schedule,
