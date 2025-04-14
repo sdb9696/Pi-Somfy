@@ -234,15 +234,15 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             return {'status': 'OK'}
 
     def addSchedule(self, params):
+        if not self.validatePassword():
+            return {'status': 'ERROR', 'message': 'Invalid password'}
+
+        try:
+            active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds = self._get_schedule_params(params)
+        except ValueError as e:
+            return {'status': 'ERROR', 'message': str(e)}
+
         self.LogDebug("create new schedule")
-        data = params.to_dict(flat=False)
-        active = data['active'][0]
-        repeatType = data['repeatType'][0]
-        repeatValue = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
-        timeType = data['timeType'][0]
-        timeValue = data['timeValue'][0]
-        shutterAction = data['shutterAction'][0]
-        shutterIds = data['shutterIds[]']
         return self.schedule.addSchedule(
             active,
             repeatType,
@@ -251,23 +251,35 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             timeValue,
             shutterAction,
             shutterIds,
-        );
+        )
 
     def editSchedule(self, params):
-        id = params.get('id', 0, type=str)
-        self.LogDebug("change schedule: "+id)
-        data = params.to_dict(flat=False)
+        if not self.validatePassword():
+            return {'status': 'ERROR', 'message': 'Invalid password'}
 
-        active = data['active'][0]
-        repeatType = data['repeatType'][0]
-        repeatValues = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
-        timeType = data['timeType'][0]
-        timeValue = data['timeValue'][0]
-        shutterAction = data['shutterAction'][0]
-        shutterIds = data['shutterIds[]']
+        id = params.get('id', type=str)
+        if not id:
+            return {'status': 'ERROR', 'message': 'Schedule ID is required'}
         
-        return self.schedule.editSchedule(id, active, repeatType, repeatValues, timeType, timeValue, shutterAction, shutterIds);
+        try:
+            active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds = self._get_schedule_params(params)
+        except ValueError as e:
+            return {'status': 'ERROR', 'message': str(e)}
 
+        self.LogDebug("change schedule: "+id)
+        return self.schedule.editSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
+
+    def _get_schedule_params(self, params):
+        param_values = {key: params.get(key) for key in ['active', 'repeatType', 'repeatValue', 'timeType', 'timeValue', 'shutterAction', 'shutterIds']}
+        param_values['shutterIds'] = params.getlist('shutterIds[]')  
+        if param_values['repeatType'] != "once":
+            param_values['repeatValue'] = params.getlist('repeatValue[]')        
+        missing_params = [key for key, val in param_values.items() if not val]
+        if missing_params:
+            raise ValueError(f"Missing or empty parameter values: {', '.join(missing_params)}")
+        
+        return (param_value for param_value in param_values.values())
+    
     def deleteSchedule(self, params):
         id = params.get('id', 0, type=str)
         self.LogDebug("delete schedule: "+id)
