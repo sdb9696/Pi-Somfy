@@ -156,59 +156,41 @@ class Schedule(MyLog):
         self.LogDebug("Loading Schedule from Config File")
         for id, data in self.config.Schedule.items():
             self.LogDebug("Loading Scheudle "+str(id))
-            if data['repeatType'] == 'weekday':
-               repeatValue = data['repeatValue'].split("|")
-            else:
-               repeatValue = data['repeatValue']
+            repeatValue = data['repeatValue']
             evt =  Event(data['active'],data['repeatType'],repeatValue,data['timeType'],data['timeValue'],data['shutterAction'],data['shutterIds'])
             self.addEvent(id, evt)
             
-    def addSchedule(self, data):
-        id = self.getNewId()
-        
-        active = data['active'][0]
-        repeatType = data['repeatType'][0]
-        repeatValueStr = data['repeatValue'][0] if (data['repeatType'][0] == "once") else "|".join(data['repeatValue[]'])
-        repeatValueList = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
-        timeType = data['timeType'][0]
-        timeValue = data['timeValue'][0]
-        shutterAction = data['shutterAction'][0]
-        shutterIds = data['shutterIds[]']
-           
-        self.config.setSchedule(id, active, repeatType, repeatValueStr, timeType, timeValue, shutterAction, shutterIds)
+    def addSchedule(self, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds):
 
-        self.config.Schedule[str(id)] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValueStr, 
+        id = self.getNewId()
+
+           
+        self.config.setSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
+
+        self.config.Schedule[str(id)] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValue, 
                                     'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
                                     'shutterIds': shutterIds}
 
 
-        evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIds)
+        evt =  Event(active,repeatType,repeatValue,timeType,timeValue,shutterAction,shutterIds)
         self.addEvent(str(id), evt)
             
         self.setUpdateTime()
         return { 'status': 'OK', 'id': str(id) }
 
-    def editSchedule(self, id, data):
+    def editSchedule(self, id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds):
+
         if ((not id in self.schedule) or (not id in self.config.Schedule)):
             return {'status': 'ERROR', 'message': 'Schedule does not exist'}
         else:
-            evt = self.config.Schedule[id]
-            active = data['active'][0]
-            repeatType = data['repeatType'][0]
-            repeatValueStr = data['repeatValue'][0] if (data['repeatType'][0] == "once") else "|".join(data['repeatValue[]'])
-            repeatValueList = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
-            timeType = data['timeType'][0]
-            timeValue = data['timeValue'][0]
-            shutterAction = data['shutterAction'][0]
-            shutterIds = data['shutterIds[]']
 
-            self.config.setSchedule(id, active, repeatType, repeatValueStr, timeType, timeValue, shutterAction, shutterIds)
-            self.config.Schedule[id] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValueStr, 
+            self.config.setSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
+            self.config.Schedule[id] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValue, 
                                         'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
                                         'shutterIds': shutterIds}
 
             self.schedule.pop(id, None)
-            evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIds)
+            evt =  Event(active,repeatType,repeatValue,timeType,timeValue,shutterAction,shutterIds)
             self.addEvent(id, evt)
             
             self.setUpdateTime()

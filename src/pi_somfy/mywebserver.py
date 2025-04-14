@@ -192,22 +192,10 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         elif not self.isfloat(duration):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
-            tmp_id = int(self.config.RTS_Address, 16)
-            conflict = True
-            while conflict == True:
-                tmp_id = tmp_id+1
-                conflict = False
-                for key in self.config.Shutters:
-                    if tmp_id == int(key, 16):
-                        conflict = True
-            id = "0x%0.2X" % tmp_id
-            code = 1
-            self.LogDebug("got a new shutter id: "+id)
-            self.config.setShutter(id, name, duration)
-            self.config.setShutterCode(id, code)
-            self.config.ShuttersByName[name] = id
-            self.config.Shutters[id] = {'name': name, 'code': code, 'duration': duration, 'durationDown': int(duration), 'durationUp': int(duration), 'intermediatePosition': None}
-            return {'status': 'OK', 'id': id}
+            self.config.addShutter(name, duration)
+            id = self.config.ShuttersByName[name]['id']
+            self.LogDebug("got a new shutter id: "+str(id))
+            return {'status': 'OK', 'id': str(id)}
 
     def editShutter(self, params):
         id = params.get('id', 0, type=str)
@@ -223,7 +211,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         self.LogDebug("edit shutter: "+id+" / "+name)
         if (not id in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
-        elif ((name == self.config.Shutters[id]['name']) and (duration == self.config.Shutters[id]['duration'])):
+        elif ((name == self.config.Shutters[id]['name']) and (duration == self.config.Shutters[id]['durationDown'])):
             return {'status': 'ERROR', 'message': 'Neither Name nor Duration has not changed, remaining the same.'}
         elif ((name != self.config.Shutters[id]['name']) and (name in self.config.ShuttersByName)):
             return {'status': 'ERROR', 'message': 'Name is not unique'}
@@ -232,11 +220,8 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         elif not self.isfloat(duration):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
-            self.config.s(str(id), str(name)+",True,"+str(duration), section="Shutters");
-            self.config.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
-            self.config.ShuttersByName['name'] = id
-            self.config.Shutters[id]['name'] = name
-            self.config.Shutters[id]['duration'] = duration
+            self.config.setShutter(id, name, duration)
+
             return {'status': 'OK'}
 
     def deleteShutter(self, params):
@@ -246,18 +231,42 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         else:
             self.config.setShutterActive(id, False)
-            self.config.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
-            self.config.Shutters.pop(id, None)
             return {'status': 'OK'}
 
     def addSchedule(self, params):
         self.LogDebug("create new schedule")
-        return self.schedule.addSchedule(params.to_dict(flat=False));
+        data = params.to_dict(flat=False)
+        active = data['active'][0]
+        repeatType = data['repeatType'][0]
+        repeatValue = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
+        timeType = data['timeType'][0]
+        timeValue = data['timeValue'][0]
+        shutterAction = data['shutterAction'][0]
+        shutterIds = data['shutterIds[]']
+        return self.schedule.addSchedule(
+            active,
+            repeatType,
+            repeatValue,
+            timeType,
+            timeValue,
+            shutterAction,
+            shutterIds,
+        );
 
     def editSchedule(self, params):
         id = params.get('id', 0, type=str)
         self.LogDebug("change schedule: "+id)
-        return self.schedule.editSchedule(id, params.to_dict(flat=False));
+        data = params.to_dict(flat=False)
+
+        active = data['active'][0]
+        repeatType = data['repeatType'][0]
+        repeatValues = data['repeatValue'][0] if (data['repeatType'][0] == "once") else data['repeatValue[]']
+        timeType = data['timeType'][0]
+        timeValue = data['timeValue'][0]
+        shutterAction = data['shutterAction'][0]
+        shutterIds = data['shutterIds[]']
+        
+        return self.schedule.editSchedule(id, active, repeatType, repeatValues, timeType, timeValue, shutterAction, shutterIds);
 
     def deleteSchedule(self, params):
         id = params.get('id', 0, type=str)

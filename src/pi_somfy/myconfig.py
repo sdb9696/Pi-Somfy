@@ -237,7 +237,7 @@ class MyConfig(MyLog):
             try:
                 param = value.split(",")
                 if param[0].strip().lower() in ('active', 'paused'):
-                   self.Schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2], 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
+                   self.Schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2].split("|"), 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
             except Exception as e1:
                 self.LogErrorLine("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
                 return False
@@ -382,17 +382,55 @@ class MyConfig(MyLog):
             name: Shutter name
             duration: Shutter duration
         """
+        if (shutter := self.Shutters.get(shutterId)) is None:
+            raise ValueError(f"Shutter {shutterId} does not exist")
+        original_name = shutter['name']
+
+        shutter['name'] = name
+        shutter['durationUp'] = int(duration)
+        shutter['durationDown'] = int(duration)
+
         with self.json_config() as json_dict:
-            if shutterId not in json_dict['shutters']:
-                json_dict['shutters'][shutterId] = {
-                    "active": True,
-                    "intermediatePosition": None
-                }
-            json_dict['shutters'][shutterId]['name'] = name
-            json_dict['shutters'][shutterId]['durationUp'] = int(duration)
-            json_dict['shutters'][shutterId]['durationDown'] = int(duration)
+            json_dict['shutters'][shutterId] = shutter
+
+        self.ShuttersByName.pop('original_name', None)
+        self.ShuttersByName[name] = shutter
 
 
+    def addShutter(self, name: str, duration: str):
+        """Set shutter name and duration and save to config.
+
+        Args:
+            shutterId: Shutter identifier
+            name: Shutter name
+            duration: Shutter duration
+        """
+        tmp_id = int(self.RTS_Address, 16)
+        conflict = True
+        while conflict == True:
+            tmp_id = tmp_id+1
+            conflict = False
+            for key in self.Shutters:
+                if tmp_id == int(key, 16):
+                    conflict = True
+        shutterId = "0x%0.2X" % tmp_id
+        
+        shutter = {
+            "name": name,
+            "code": 1,
+            "durationUp": int(duration),
+            "durationDown": int(duration),
+            "active": True,
+            "intermediatePosition": None
+        }
+        with self.json_config() as json_dict:
+            if shutterId in json_dict['shutters']:
+                raise ValueError(f"Shutter {shutterId} already exists")
+            json_dict['shutters'][shutterId] = shutter
+
+        self.ShuttersByName[name] = shutter
+        self.Shutters[shutterId] = shutter
+    
     @contextmanager
     def json_config(self):
         # Code to acquire resource, e.g.:
@@ -414,6 +452,9 @@ class MyConfig(MyLog):
         """
         with self.json_config() as json_dict:
             json_dict['shutters'][shutterId]['active'] = active
+
+        self.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
+        self.Shutters.pop(id, None)
 
     def setSchedule(self, scheduleId: str, active: bool, repeatType: str, repeatValue: str, timeType: str, timeValue: str, shutterAction: str, shutterIds: str):
         """Set schedule and save to config.
