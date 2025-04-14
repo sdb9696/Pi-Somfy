@@ -249,7 +249,7 @@ class Shutter(MyLog):
             code = int(self.config.Shutters[shutterId]['code'])
 
             # print (codecs.encode(shutterId, 'hex_codec'))
-            self.config.setCode(shutterId, code+1)
+            self.config.setShutterCode(shutterId, code+1)
 
             self.LogInfo(f"Remote  :       0x{teleco:02X} ({self.config.Shutters[shutterId]['name']})")
             self.LogInfo(f"Button  :       0x{button:02X}")

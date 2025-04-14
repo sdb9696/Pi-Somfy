@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import logging
 import threading
-
+from .myconfig import MyConfig
 try:
     from flask import Flask, render_template, request, Response, jsonify, json
 except Exception as e1:
@@ -36,7 +36,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
     app = None
     CriticalLock = None
 
-    def __init__(self, name = __name__, static_url_path = '', log = None, shutter = None, schedule = None, config = None):
+    def __init__(self, name = __name__, static_url_path = '', log = None, shutter = None, schedule = None, config: MyConfig = None):
         threading.Thread.__init__(self, name="Web Server")
         if log != None:
             self.log = log
@@ -203,9 +203,8 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             id = "0x%0.2X" % tmp_id
             code = 1
             self.LogDebug("got a new shutter id: "+id)
-            self.config.WriteValue(str(id), str(name)+",True,"+str(duration), section="Shutters");
-            self.config.WriteValue(str(id), str(code), section="ShutterRollingCodes");
-            self.config.WriteValue(str(id), str(None), section="ShutterIntermediatePositions");
+            self.config.setShutter(id, name, duration)
+            self.config.setShutterCode(id, code)
             self.config.ShuttersByName[name] = id
             self.config.Shutters[id] = {'name': name, 'code': code, 'duration': duration, 'durationDown': int(duration), 'durationUp': int(duration), 'intermediatePosition': None}
             return {'status': 'OK', 'id': id}
@@ -233,7 +232,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         elif not self.isfloat(duration):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
-            self.config.WriteValue(str(id), str(name)+",True,"+str(duration), section="Shutters");
+            self.config.s(str(id), str(name)+",True,"+str(duration), section="Shutters");
             self.config.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
             self.config.ShuttersByName['name'] = id
             self.config.Shutters[id]['name'] = name
@@ -246,7 +245,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         if (not id in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         else:
-            self.config.WriteValue(str(id), self.config.Shutters[id]['name']+",False,"+self.config.Shutters[id]['duration'], section="Shutters");
+            self.config.setShutterActive(id, False)
             self.config.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
             self.config.Shutters.pop(id, None)
             return {'status': 'OK'}

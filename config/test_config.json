@@ -1,0 +1,13 @@
+{
+  "shutters": {
+    "0x279621": {
+      "name": "TestShutter",
+      "active": true,
+      "code": 51,
+      "durationDown": 5,
+      "durationUp": 5,
+      "intermediatePosition": null
+    }
+  },
+  "schedule": {}
+}

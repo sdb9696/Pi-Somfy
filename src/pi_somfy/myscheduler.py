@@ -16,6 +16,7 @@ import threading
 
 try:
     from .mylog import MyLog
+    from .myconfig import MyConfig
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))
@@ -77,7 +78,7 @@ class Event:
         return outstr
            
 class Schedule(MyLog):
-    def __init__(self, log = None, config = None):
+    def __init__(self, log = None, config: MyConfig = None):
         super(Schedule, self).__init__()
         self.lock = threading.Lock()
         if log != None:
@@ -159,7 +160,7 @@ class Schedule(MyLog):
                repeatValue = data['repeatValue'].split("|")
             else:
                repeatValue = data['repeatValue']
-            evt =  Event(data['active'],data['repeatType'],repeatValue,data['timeType'],data['timeValue'],data['shutterAction'],data['shutterIds'].split("|"))
+            evt =  Event(data['active'],data['repeatType'],repeatValue,data['timeType'],data['timeValue'],data['shutterAction'],data['shutterIds'])
             self.addEvent(id, evt)
             
     def addSchedule(self, data):
@@ -172,17 +173,16 @@ class Schedule(MyLog):
         timeType = data['timeType'][0]
         timeValue = data['timeValue'][0]
         shutterAction = data['shutterAction'][0]
-        shutterIdsList = data['shutterIds[]']
-        shutterIdsStr = "|".join(shutterIdsList)
+        shutterIds = data['shutterIds[]']
            
-        self.config.WriteValue(str(id), active+","+repeatType+","+repeatValueStr+","+timeType+","+timeValue+","+shutterAction+","+shutterIdsStr, 
-                                   section="Scheduler");
+        self.config.setSchedule(id, active, repeatType, repeatValueStr, timeType, timeValue, shutterAction, shutterIds)
+
         self.config.Schedule[str(id)] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValueStr, 
                                     'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
-                                    'shutterIds': shutterIdsStr}
+                                    'shutterIds': shutterIds}
 
 
-        evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIdsList)
+        evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIds)
         self.addEvent(str(id), evt)
             
         self.setUpdateTime()
@@ -200,17 +200,15 @@ class Schedule(MyLog):
             timeType = data['timeType'][0]
             timeValue = data['timeValue'][0]
             shutterAction = data['shutterAction'][0]
-            shutterIdsList = data['shutterIds[]']
-            shutterIdsStr = "|".join(shutterIdsList)
-            
-            self.config.WriteValue(str(id), active+","+repeatType+","+repeatValueStr+","+timeType+","+timeValue+","+shutterAction+","+shutterIdsStr, 
-                                   section="Scheduler");
+            shutterIds = data['shutterIds[]']
+
+            self.config.setSchedule(id, active, repeatType, repeatValueStr, timeType, timeValue, shutterAction, shutterIds)
             self.config.Schedule[id] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValueStr, 
                                         'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
-                                        'shutterIds': shutterIdsStr}
+                                        'shutterIds': shutterIds}
 
             self.schedule.pop(id, None)
-            evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIdsList)
+            evt =  Event(active,repeatType,repeatValueList,timeType,timeValue,shutterAction,shutterIds)
             self.addEvent(id, evt)
             
             self.setUpdateTime()
@@ -221,9 +219,8 @@ class Schedule(MyLog):
             return {'status': 'ERROR', 'message': 'Schedule does not exist'}
         else:
             evt = self.config.Schedule[id]
-            self.config.WriteValue(str(id), "deleted,"+evt['repeatType']+","+evt['repeatValue']+","+
-                                            evt['timeType']+","+evt['timeValue']+","+evt['shutterAction']+","+
-                                            evt['shutterIds'], section="Scheduler");
+            self.config.setSchedule(id, "deleted", evt['repeatType'], evt['repeatValue'], evt['timeType'], evt['timeValue'], evt['shutterAction'], evt['shutterIds'])
+
             self.config.Schedule.pop(id, None)
             self.schedule.pop(id, None)
             self.setUpdateTime()
@@ -348,10 +345,10 @@ class Scheduler(threading.Thread, MyLog):
                                             time.sleep(5)
                                 elif (eventDetail[1].startswith("stop")):
                                     self.shutter.stop(shutterId)
-                            except:
-              	                self.LogError ("Error: cannot open "+shutterId)
-              	                self.LogError (traceback.format_exc())
-                    eventsToDelete.append(eventTimeStr);    
+                            except Exception as e:
+                                self.LogError ("Error: cannot open "+shutterId)
+                                self.LogError (traceback.format_exc())
+                    eventsToDelete.append(eventTimeStr);
             for key in eventsToDelete:
                 try:
                     del self.currentSchedule[key] 

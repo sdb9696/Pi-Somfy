@@ -1,6 +1,8 @@
 
 startAuto.sh
-operateShutters.conf
+config/operateShutters.conf
+config/operateShutters.json
+config/operateShutters.toml
 __pycache__/
 .vscode/
 .tok
