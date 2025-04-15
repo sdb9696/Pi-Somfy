@@ -8,6 +8,7 @@ __pycache__/
 .tok
 config.json
 *.log
+*.log.*
 
 .cursorrules
 .cursor

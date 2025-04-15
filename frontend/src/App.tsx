@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Accordion, Container, Spinner } from 'react-bootstrap';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { getConfig } from './services/api';
 import MapSettings from './components/MapSettings';
 import ShutterManager from './components/ShutterManager';
@@ -8,13 +13,17 @@ import ManualOperation from './components/ManualOperation';
 import { Config } from './types';
 import './App.css'
 
-import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState<string>('');
+  console.log('Current activeKey:', activeKey);
 
+  useEffect(() => {
+    console.log('activeKey changed to:', activeKey);
+    // Breakpoint can be set on this line
+  }, [activeKey]);
   useEffect(() => {
     const fetchConfig = async () => {
       try {
@@ -51,23 +60,28 @@ function App() {
   if (loading) {
     return (
       <div className="loader-container">
-        <Spinner animation="border" role="status">
+        <div className="w-5 h-5 border-2 border-t-transparent border-gray-300 rounded-full animate-spin">
           <span className="visually-hidden">Loading...</span>
-        </Spinner>
+        </div>
       </div>
     );
   }
 
   return (
-    <Container>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <h1 className="my-4">Operate Somfy Shutters</h1>
       
-      <Accordion activeKey={activeKey} onSelect={(k) => setActiveKey(k as string)}>
-        <Accordion.Item eventKey="settings">
-          <Accordion.Header>
+      <Accordion
+        type="single"
+        collapsible
+        value={activeKey}
+        onValueChange={(val) => setActiveKey(val || "")}
+      >        
+        <AccordionItem value="settings">
+          <AccordionTrigger>
             <span className="me-2">⚙️</span> Settings
-          </Accordion.Header>
-          <Accordion.Body>
+          </AccordionTrigger>
+          <AccordionContent>
             {config && (
               <MapSettings 
                 initialLatitude={config.Latitude} 
@@ -75,19 +89,19 @@ function App() {
                 onLocationSaved={refreshConfig}
               />
             )}
-          </Accordion.Body>
-        </Accordion.Item>
+          </AccordionContent>
+        </AccordionItem>
         
-        <Accordion.Item eventKey="shutters">
-          <Accordion.Header>
+        <AccordionItem value="shutters">
+          <AccordionTrigger>
             <span className="me-2">📋</span> Add/Remove Shutter
             {config && (
               <span className="ms-2 badge bg-secondary">
                 {Object.keys(config.Shutters).length}
               </span>
             )}
-          </Accordion.Header>
-          <Accordion.Body>
+          </AccordionTrigger>
+          <AccordionContent>
             {config && (
               <ShutterManager 
                 shutters={config.Shutters}
@@ -95,19 +109,19 @@ function App() {
                 onShutterChange={refreshConfig}
               />
             )}
-          </Accordion.Body>
-        </Accordion.Item>
+          </AccordionContent>
+        </AccordionItem>
         
-        <Accordion.Item eventKey="schedules">
-          <Accordion.Header>
+        <AccordionItem value="schedules">
+          <AccordionTrigger>
             <span className="me-2">⏰</span> Scheduled Operation
             {config && (
               <span className="ms-2 badge bg-secondary">
                 {Object.keys(config.Schedule).length}
               </span>
             )}
-          </Accordion.Header>
-          <Accordion.Body>
+          </AccordionTrigger>
+          <AccordionContent>
             {config && (
               <ScheduleManager 
                 schedules={config.Schedule}
@@ -115,22 +129,22 @@ function App() {
                 onScheduleChange={refreshConfig}
               />
             )}
-          </Accordion.Body>
-        </Accordion.Item>
-        <Accordion.Item eventKey="manual">
-          <Accordion.Header>
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="manual">
+          <AccordionTrigger>
             <span className="me-2">🔄</span> Manual Operation
-          </Accordion.Header>
-          <Accordion.Body>
+          </AccordionTrigger>
+          <AccordionContent>
             {config && (
               <ManualOperation 
                 shutters={config.Shutters}
               />
             )}
-          </Accordion.Body>
-        </Accordion.Item>        
+          </AccordionContent>
+        </AccordionItem>        
       </Accordion>
-    </Container>
+    </div>
   );
 }
 

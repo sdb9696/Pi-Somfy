@@ -47,7 +47,7 @@ export const addSchedule = async (params: any) => {
 };
 
 export const editSchedule = async (id: string, params: any) => {
-  const response = await api.post('editSchedule', { id, ...params });
+  const response = await api.postForm('editSchedule', { id, ...params });
   return response.data;
 };
 

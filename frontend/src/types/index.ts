@@ -13,6 +13,7 @@ export interface Schedule {
     repeatValue: string[] | string;
     shutterAction: string;
     shutterIds: string[];
+    isEditing?: boolean;
 }
   
     // This matches the actual data structure

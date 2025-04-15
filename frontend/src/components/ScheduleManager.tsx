@@ -1,7 +1,21 @@
-import { useState } from 'react';
-import { Table, Button, Form, Modal, Alert } from 'react-bootstrap';
+import { useState, useEffect } from 'react';
+import { Table } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Form } from 'react-bootstrap';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { addSchedule, editSchedule, deleteSchedule } from '../services/api';
 import { Schedule } from '../types';
+import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sun, Sunrise, Sunset, CalendarSyncIcon, Calendar1, Calendar } from 'lucide-react';
+import 'bootstrap/dist/css/bootstrap.min.css'; 
 
 // In ScheduleManager.tsx
 interface ScheduleManagerProps {
@@ -10,12 +24,105 @@ interface ScheduleManagerProps {
     onScheduleChange: () => void;
   }
 
+interface ScheduleRowProps {
+  schedule: Schedule;
+  isNew?: boolean;
+  onEdit?: (scheduleId: string) => void;
+  onSave?: () => void;
+  onCancel?: (scheduleId: string) => void;
+  onDelete?: (scheduleId: string) => void;
+  onFormChange?: (updatedSchedule: Schedule) => void;
+  renderScheduleForm: (schedule: Schedule, isNew?: boolean) => React.ReactNode;
+  formatScheduleDescription: (schedule: Schedule) => string;
+}
+
+const ScheduleRow = ({
+  schedule,
+  isNew = false,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
+  renderScheduleForm,
+  formatScheduleDescription,
+}: ScheduleRowProps) => {
+  return (
+    <tr className="border-t">
+      <td className="p-0 border">
+        {schedule.isEditing || isNew ? (
+          renderScheduleForm(schedule, isNew)
+        ) : (
+          <div className="p-3">
+            {formatScheduleDescription(schedule)}
+          </div>
+        )}
+      </td>
+      <td className="border text-center align-middle" style={{ width: '100px', verticalAlign: 'middle' }}>
+        {schedule.isEditing || isNew ? (
+          <div className="d-flex gap-2 justify-content-center">
+            <Button variant="ghost" size="icon" onClick={onSave} className="h-8 w-8" title={isNew ? "Add" : "Save"}>
+              <Save className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onCancel && onCancel(schedule.id || '')}
+              className="h-8 w-8"
+              title="Cancel"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="d-flex gap-2 justify-content-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onEdit && onEdit(schedule.id)}
+              className="h-8 w-8"
+              title="Edit"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onDelete && onDelete(schedule.id)}
+              className="h-8 w-8"
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+};
+
 const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleManagerProps) => {
-  const [isEditing, setIsEditing] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string, type: string } | null>(null);
+  const [showNewScheduleForm, setShowNewScheduleForm] = useState(false);
+  
+  // Create a local state for tracking schedules with their edit state
+  const [localSchedules, setLocalSchedules] = useState<Record<string, Schedule>>({});
+  
+  // Update localSchedules when props schedules change
+  useEffect(() => {
+    setLocalSchedules(Object.entries(schedules).reduce((acc, [id, schedule]) => {
+      return {
+        ...acc,
+        [id]: {
+          ...schedule,
+          id,
+          isEditing: localSchedules[id]?.isEditing || false
+        }
+      };
+    }, {}));
+  }, [schedules]);
   
   // New schedule form
   const [newSchedule, setNewSchedule] = useState<Omit<Schedule, 'id'>>({
@@ -128,6 +235,7 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
         setMessage({ text: 'Schedule added successfully!', type: 'success' });
         onScheduleChange();
         resetNewScheduleForm();
+        setShowNewScheduleForm(false);
       } else {
         setMessage({ text: 'Error adding schedule', type: 'danger' });
       }
@@ -147,11 +255,18 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
       shutterAction: 'up',
       shutterIds: []
     });
+    setShowNewScheduleForm(true);
   };
   
-  const startEditing = (schedule: Schedule) => {
-    setEditingSchedule({...schedule});
-    setIsEditing(true);
+  const startEditing = (scheduleId: string) => {
+    setLocalSchedules({
+      ...localSchedules,
+      [scheduleId]: {
+        ...localSchedules[scheduleId],
+        isEditing: true
+      }
+    });
+    setEditingSchedule({...localSchedules[scheduleId], isEditing: true});
   };
   
   const handleSaveEdit = async () => {
@@ -163,8 +278,19 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
     }
     
     try {
-      await editSchedule(editingSchedule.id, editingSchedule);
-      setIsEditing(false);
+      // Don't send isEditing to the backend
+      const { isEditing, ...scheduleToSave } = editingSchedule;
+      await editSchedule(editingSchedule.id, scheduleToSave);
+      
+      // Update local state
+      setLocalSchedules({
+        ...localSchedules,
+        [editingSchedule.id]: {
+          ...localSchedules[editingSchedule.id],
+          isEditing: false
+        }
+      });
+      
       setEditingSchedule(null);
       setMessage({ text: 'Schedule updated successfully!', type: 'success' });
       onScheduleChange();
@@ -172,6 +298,17 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
       setMessage({ text: 'Error updating schedule', type: 'danger' });
       console.error('Error editing schedule:', error);
     }
+  };
+  
+  const cancelEditing = (scheduleId: string) => {
+    setLocalSchedules({
+      ...localSchedules,
+      [scheduleId]: {
+        ...localSchedules[scheduleId],
+        isEditing: false
+      }
+    });
+    setEditingSchedule(null);
   };
   
   const confirmDelete = (id: string) => {
@@ -289,307 +426,328 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
     const astroOffset = getAstroOffsetValue(schedule.timeValue);
     
     return (
-      <div className="p-3 border rounded mb-3">
+      <div className="p-3 border rounded mb-2">
         <Form>
-          <Form.Group className="mb-3">
-            <Form.Check 
-              type="switch"
-              id={`active-${isNew ? 'new' : schedule.id}`}
-              label={schedule.active === 'active' ? 'Active' : 'Paused'}
-              checked={schedule.active === 'active'}
-              onChange={(e) => {
-                if (isNew) {
-                  setNewSchedule({...newSchedule, active: e.target.checked ? 'active' : 'paused'});
-                } else {
-                  setEditingSchedule({...schedule, active: e.target.checked ? 'active' : 'paused'});
+          <div className="row">
+            {/* Active/Pause Toggle */}
+            <div className="col-sm-2">
+              <Form.Check 
+                type="switch"
+                id={`active-${isNew ? 'new' : schedule.id}`}
+                label={
+                  <span>
+                    {schedule.active === 'active' ? 
+                      <><Play className="h-4 w-4 inline-block mr-1" /> Active</> : 
+                      <><Pause className="h-4 w-4 inline-block mr-1" /> Paused</>
+                    }
+                  </span>
                 }
-              }}
-            />
-          </Form.Group>
-          
-          <div className="row mb-3">
-            <div className="col-md-4">
-              <Form.Group>
-                <Form.Label>Time Type</Form.Label>
-                <div className="d-flex gap-2">
-                  <Button 
-                    variant={schedule.timeType === 'clock' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleTimeTypeChange(newSchedule, 'clock'));
-                      } else {
-                        setEditingSchedule(handleTimeTypeChange(schedule, 'clock'));
-                      }
-                    }}
-                  >
-                    Clock
-                  </Button>
-                  <Button 
-                    variant={schedule.timeType === 'astro' && schedule.timeValue.startsWith('sunrise') ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleTimeTypeChange(newSchedule, 'sunrise'));
-                      } else {
-                        setEditingSchedule(handleTimeTypeChange(schedule, 'sunrise'));
-                      }
-                    }}
-                  >
-                    Sunrise
-                  </Button>
-                  <Button 
-                    variant={schedule.timeType === 'astro' && schedule.timeValue.startsWith('sunset') ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleTimeTypeChange(newSchedule, 'sunset'));
-                      } else {
-                        setEditingSchedule(handleTimeTypeChange(schedule, 'sunset'));
-                      }
-                    }}
-                  >
-                    Sunset
-                  </Button>
-                </div>
-              </Form.Group>
-              
-              {schedule.timeType === 'clock' && (
-                <Form.Group className="mt-2">
-                  <Form.Label>Time</Form.Label>
-                  <Form.Control 
-                    type="time" 
-                    value={schedule.timeValue} 
-                    onChange={(e) => {
-                      if (isNew) {
-                        setNewSchedule({...newSchedule, timeValue: e.target.value});
-                      } else {
-                        setEditingSchedule({...schedule, timeValue: e.target.value});
-                      }
-                    }}
-                  />
-                </Form.Group>
-              )}
-              
-              {schedule.timeType === 'astro' && (
-                <Form.Group className="mt-2">
-                  <Form.Label>Offset (minutes)</Form.Label>
-                  <Form.Range 
-                    min={-300}
-                    max={300}
-                    step={5}
-                    value={astroOffset}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (isNew) {
-                        setNewSchedule(handleAstroOffsetChange(newSchedule, value));
-                      } else {
-                        setEditingSchedule(handleAstroOffsetChange(schedule, value));
-                      }
-                    }}
-                  />
-                  <div className="d-flex justify-content-between">
-                    <span>-300</span>
-                    <span>{astroOffset} min</span>
-                    <span>+300</span>
-                  </div>
-                </Form.Group>
-              )}
+                checked={schedule.active === 'active'}
+                onChange={(e) => {
+                  if (isNew) {
+                    setNewSchedule({...newSchedule, active: e.target.checked ? 'active' : 'paused'});
+                  } else {
+                    setEditingSchedule({...schedule, active: e.target.checked ? 'active' : 'paused'});
+                  }
+                }}
+                className="mb-3 mt-2"
+              />
             </div>
             
-            <div className="col-md-4">
-              <Form.Group>
-                <Form.Label>Repeat</Form.Label>
-                <div className="d-flex gap-2">
-                  <Button 
-                    variant={schedule.repeatType === 'weekday' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleRepeatTypeChange(newSchedule, 'weekday'));
-                      } else {
-                        setEditingSchedule(handleRepeatTypeChange(schedule, 'weekday'));
-                      }
-                    }}
-                  >
-                    Weekly
-                  </Button>
-                  <Button 
-                    variant={schedule.repeatType === 'once' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleRepeatTypeChange(newSchedule, 'once'));
-                      } else {
-                        setEditingSchedule(handleRepeatTypeChange(schedule, 'once'));
-                      }
-                    }}
-                  >
-                    Once
-                  </Button>
+            {/* Time Type & Value */}
+            <div className="col-sm-3">
+              <div className="d-flex align-items-start">
+                {/* Time Type Icons */}
+                <div className="time-type-icons mr-2" style={{width: '40px', textAlign: 'center'}}>
+                  <div className="text-center mb-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 p-1"
+                      onClick={() => {
+                        const nextType = schedule.timeType === 'clock' ? 'sunrise' : 
+                                        schedule.timeValue.startsWith('sunrise') ? 'sunset' : 'clock';
+                        if (isNew) {
+                          setNewSchedule(handleTimeTypeChange(newSchedule, nextType));
+                        } else {
+                          setEditingSchedule(handleTimeTypeChange(schedule, nextType));
+                        }
+                      }}
+                    >
+                      {schedule.timeType === 'clock' ? (
+                        <Clock className="h-6 w-6" />
+                      ) : schedule.timeValue.startsWith('sunrise') ? (
+                        <Sunrise className="h-6 w-6" />
+                      ) : (
+                        <Sunset className="h-6 w-6" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </Form.Group>
-              
-              {schedule.repeatType === 'weekday' && (
-                <Form.Group className="mt-2">
-                  <Form.Label>Days</Form.Label>
-                  <div className="d-flex flex-wrap gap-1">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                      <Form.Check 
-                        key={day}
-                        type="checkbox"
-                        id={`${day}-${isNew ? 'new' : schedule.id}`}
-                        label={day.substring(0, 2)}
-                        checked={Array.isArray(schedule.repeatValue) && schedule.repeatValue.includes(day)}
+                
+                {/* Time Value Controls */}
+                <div className="time-value-controls">
+                  {schedule.timeType === 'clock' && (
+                    <Form.Group>
+                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Time</Form.Label>
+                      <div className="input-group clockpicker" style={{width: '120px'}}>
+                        <Form.Control 
+                          type="time" 
+                          value={schedule.timeValue} 
+                          onChange={(e) => {
+                            if (isNew) {
+                              setNewSchedule({...newSchedule, timeValue: e.target.value});
+                            } else {
+                              setEditingSchedule({...schedule, timeValue: e.target.value});
+                            }
+                          }}
+                          size="sm"
+                        />
+                        <span className="input-group-text">
+                          <Clock className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </Form.Group>
+                  )}
+                  
+                  {schedule.timeType === 'astro' && (
+                    <Form.Group>
+                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>
+                        {schedule.timeValue.startsWith('sunrise') ? 'Sunrise Offset' : 'Sunset Offset'}
+                      </Form.Label>
+                      <Form.Range 
+                        min={-300}
+                        max={300}
+                        step={5}
+                        value={astroOffset}
                         onChange={(e) => {
-                          const currentDays = Array.isArray(schedule.repeatValue) ? [...schedule.repeatValue] : [];
-                          let newDays;
-                          
-                          if (e.target.checked) {
-                            newDays = [...currentDays, day];
-                          } else {
-                            newDays = currentDays.filter(d => d !== day);
-                          }
-                          
+                          const value = parseInt(e.target.value);
                           if (isNew) {
-                            setNewSchedule({...newSchedule, repeatValue: newDays});
+                            setNewSchedule(handleAstroOffsetChange(newSchedule, value));
                           } else {
-                            setEditingSchedule({...schedule, repeatValue: newDays});
+                            setEditingSchedule(handleAstroOffsetChange(schedule, value));
                           }
                         }}
+                        style={{width: '140px'}}
                       />
-                    ))}
-                  </div>
-                </Form.Group>
-              )}
-              
-              {schedule.repeatType === 'once' && (
-                <Form.Group className="mt-2">
-                  <Form.Label>Date</Form.Label>
-                  <Form.Control 
-                    type="date" 
-                    value={schedule.repeatValue as string} 
-                    onChange={(e) => {
-                      if (isNew) {
-                        setNewSchedule({...newSchedule, repeatValue: e.target.value});
-                      } else {
-                        setEditingSchedule({...schedule, repeatValue: e.target.value});
-                      }
-                    }}
-                  />
-                </Form.Group>
-              )}
+                      <div className="d-flex justify-content-between" style={{width: '140px', fontSize: '0.7rem'}}>
+                        <span>-300</span>
+                        <span className="text-center">{astroOffset} min</span>
+                        <span>+300</span>
+                      </div>
+                    </Form.Group>
+                  )}
+                </div>
+              </div>
             </div>
             
-            <div className="col-md-4">
-              <Form.Group>
-                <Form.Label>Action</Form.Label>
-                <div className="d-flex gap-2">
-                  <Button 
-                    variant={currentAction === 'up' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleShutterActionChange(newSchedule, 'up', percentage));
-                      } else {
-                        setEditingSchedule(handleShutterActionChange(schedule, 'up', percentage));
-                      }
-                    }}
-                  >
-                    Up
-                  </Button>
-                  <Button 
-                    variant={currentAction === 'stop' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleShutterActionChange(newSchedule, 'stop'));
-                      } else {
-                        setEditingSchedule(handleShutterActionChange(schedule, 'stop'));
-                      }
-                    }}
-                  >
-                    Stop
-                  </Button>
-                  <Button 
-                    variant={currentAction === 'down' ? 'primary' : 'outline-primary'}
-                    onClick={() => {
-                      if (isNew) {
-                        setNewSchedule(handleShutterActionChange(newSchedule, 'down', percentage));
-                      } else {
-                        setEditingSchedule(handleShutterActionChange(schedule, 'down', percentage));
-                      }
-                    }}
-                  >
-                    Down
-                  </Button>
+            {/* Repeat Type & Value */}
+            <div className="col-sm-3">
+              <div className="d-flex align-items-start">
+                {/* Repeat Type Icons */}
+                <div className="repeat-type-icons mr-2" style={{width: '40px', textAlign: 'left'}}>
+                  <div className="text-center mb-1">
+                    <Button
+                      type="button"                    
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 p-1"
+                      onClick={() => {
+                        const nextType = schedule.repeatType === 'weekday' ? 'once' : 'weekday';
+                        if (isNew) {
+                          setNewSchedule(handleRepeatTypeChange(newSchedule, nextType));
+                        } else {
+                          setEditingSchedule(handleRepeatTypeChange(schedule, nextType));
+                        }
+                      }}
+                    >
+                      {schedule.repeatType === 'weekday' ? (
+                        <Calendar1 className="h-4 w-4"/>
+                      ) : (
+                        <CalendarSyncIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </Form.Group>
-              
-              {currentAction !== 'stop' && (
-                <Form.Group className="mt-2">
-                  <Form.Label>Percentage</Form.Label>
-                  <Form.Select 
-                    value={percentage}
-                    onChange={(e) => {
-                      const newPercentage = parseInt(e.target.value);
-                      if (isNew) {
-                        setNewSchedule(handleShutterActionChange(newSchedule, currentAction, newPercentage));
-                      } else {
-                        setEditingSchedule(handleShutterActionChange(schedule, currentAction, newPercentage));
-                      }
-                    }}
-                  >
-                    <option value="0">Full</option>
-                    <option value="10">10%</option>
-                    <option value="20">20%</option>
-                    <option value="25">25%</option>
-                    <option value="30">30%</option>
-                    <option value="40">40%</option>
-                    <option value="50">50%</option>
-                    <option value="60">60%</option>
-                    <option value="70">70%</option>
-                    <option value="75">75%</option>
-                    <option value="80">80%</option>
-                    <option value="90">90%</option>
-                  </Form.Select>
-                </Form.Group>
-              )}
-              
-              <Form.Group className="mt-2">
-                <Form.Label>Shutters</Form.Label>
-                <Form.Select 
-                  multiple
-                  value={schedule.shutterIds}
-                  onChange={(e) => {
-                    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                    if (isNew) {
-                      setNewSchedule({...newSchedule, shutterIds: selectedOptions});
-                    } else {
-                      setEditingSchedule({...schedule, shutterIds: selectedOptions});
-                    }
-                  }}
-                  style={{ height: '150px' }}
-                >
-                  {Object.entries(shutters).map(([id, shutter]) => (
-                    <option key={id} value={id}>{shutter}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
+                
+                {/* Repeat Value Controls */}
+                <div className="repeat-value-controls">
+                  {schedule.repeatType === 'weekday' && (
+                    <Form.Group>
+                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Days</Form.Label>
+                      <div className="d-flex flex-wrap" style={{maxWidth: '150px'}}>
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                          <div 
+                            key={day} 
+                            className={`day-btn me-1 mb-1 px-1 py-0 border rounded text-center ${
+                              Array.isArray(schedule.repeatValue) && schedule.repeatValue.includes(day) 
+                                ? 'bg-primary text-white' 
+                                : 'bg-white'
+                            }`}
+                            style={{fontSize: '0.7rem', width: '28px', cursor: 'pointer'}}
+                            onClick={() => {
+                              const currentDays = Array.isArray(schedule.repeatValue) ? [...schedule.repeatValue] : [];
+                              let newDays;
+                              
+                              if (currentDays.includes(day)) {
+                                newDays = currentDays.filter(d => d !== day);
+                              } else {
+                                newDays = [...currentDays, day];
+                              }
+                              
+                              if (isNew) {
+                                setNewSchedule({...newSchedule, repeatValue: newDays});
+                              } else {
+                                setEditingSchedule({...schedule, repeatValue: newDays});
+                              }
+                            }}
+                          >
+                            {day.substring(0, 2)}
+                          </div>
+                        ))}
+                      </div>
+                    </Form.Group>
+                  )}
+                  
+                  {schedule.repeatType === 'once' && (
+                    <Form.Group>
+                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Date</Form.Label>
+                      <div className="input-group" style={{width: '140px'}}>
+                        <Form.Control 
+                          type="date" 
+                          value={schedule.repeatValue as string} 
+                          onChange={(e) => {
+                            if (isNew) {
+                              setNewSchedule({...newSchedule, repeatValue: e.target.value});
+                            } else {
+                              setEditingSchedule({...schedule, repeatValue: e.target.value});
+                            }
+                          }}
+                          size="sm"
+                        />
+                        <span className="input-group-text">
+                          <Calendar className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </Form.Group>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div className="d-flex justify-content-end gap-2">
-            {isNew ? (
-              <Button variant="primary" onClick={handleAddSchedule}>
-                Add Schedule
-              </Button>
-            ) : (
-              <>
-                <Button variant="secondary" onClick={() => {
-                  setIsEditing(false);
-                  setEditingSchedule(null);
-                }}>
-                  Cancel
-                </Button>
-                <Button variant="primary" onClick={handleSaveEdit}>
-                  Save Changes
-                </Button>
-              </>
-            )}
+            
+            {/* Shutter Action & Selection */}
+            <div className="col-sm-4">
+              <div className="d-flex align-items-start">
+                {/* Action Icons */}
+                <div className="shutter-action-icons mr-3" style={{width: '40px', textAlign: 'center'}}>
+                  <div className="text-center mb-1">
+                    <Button
+                      type="button"
+                      variant='ghost'
+                      size="icon"
+                      className="h-8 w-8 mb-1"
+                      onClick={() => {
+                        if (isNew) {
+                          setNewSchedule(handleShutterActionChange(newSchedule, 'up', percentage));
+                        } else {
+                          setEditingSchedule(handleShutterActionChange(schedule, 'up', percentage));
+                        }
+                      }}
+                    >
+                      <ArrowBigUp className={`h-4 w-4 ${currentAction === 'up' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 mb-1"
+                      onClick={() => {
+                        if (isNew) {
+                          setNewSchedule(handleShutterActionChange(newSchedule, 'stop'));
+                        } else {
+                          setEditingSchedule(handleShutterActionChange(schedule, 'stop'));
+                        }
+                      }}
+                    >
+                      <Square className={`h-4 w-4 ${currentAction === 'stop' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant='ghost'
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        if (isNew) {
+                          setNewSchedule(handleShutterActionChange(newSchedule, 'down', percentage));
+                        } else {
+                          setEditingSchedule(handleShutterActionChange(schedule, 'down', percentage));
+                        }
+                      }}
+                    >
+                      <ArrowBigDown className={`h-4 w-4 ${currentAction === 'down' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Percentage & Shutter Selection */}
+                <div>
+                  {currentAction !== 'stop' && (
+                    <Form.Group className="mb-2">
+                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Percentage</Form.Label>
+                      <Form.Select 
+                        value={percentage}
+                        onChange={(e) => {
+                          const newPercentage = parseInt(e.target.value);
+                          if (isNew) {
+                            setNewSchedule(handleShutterActionChange(newSchedule, currentAction, newPercentage));
+                          } else {
+                            setEditingSchedule(handleShutterActionChange(schedule, currentAction, newPercentage));
+                          }
+                        }}
+                        size="sm"
+                        style={{width: '100px'}}
+                      >
+                        <option value="0">Full</option>
+                        <option value="10">10%</option>
+                        <option value="20">20%</option>
+                        <option value="25">25%</option>
+                        <option value="30">30%</option>
+                        <option value="40">40%</option>
+                        <option value="50">50%</option>
+                        <option value="60">60%</option>
+                        <option value="70">70%</option>
+                        <option value="75">75%</option>
+                        <option value="80">80%</option>
+                        <option value="90">90%</option>
+                      </Form.Select>
+                    </Form.Group>
+                  )}
+                  
+                  <Form.Group>
+                    <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Shutters</Form.Label>
+                    <Form.Select 
+                      multiple
+                      value={schedule.shutterIds}
+                      onChange={(e) => {
+                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                        if (isNew) {
+                          setNewSchedule({...newSchedule, shutterIds: selectedOptions});
+                        } else {
+                          setEditingSchedule({...schedule, shutterIds: selectedOptions});
+                        }
+                      }}
+                      size="sm"
+                      style={{ height: '80px', width: '160px' }}
+                    >
+                      {Object.entries(shutters).map(([id, shutter]) => (
+                        <option key={id} value={id}>{shutter}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </div>
+              </div>
+            </div>
           </div>
         </Form>
       </div>
@@ -601,78 +759,84 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
       <h2>Scheduled Operations</h2>
       
       {message && (
-        <Alert variant={message.type as any} onClose={() => setMessage(null)} dismissible>
+        <Alert variant={message.type as any}>
+          <AlertDescription>
           {message.text}
+          </AlertDescription>
+          <Button
+            onClick={() => setMessage(null) }
+            className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+          >
+          <X className="h-4 w-4" />
+          </Button>
         </Alert>
       )}
       
-      {/* Add new schedule form */}
+      {/* Add new schedule button */}
       <div className="mb-4">
         <Button 
-          variant="primary" 
+          variant="default" 
           className="mb-3"
           onClick={() => resetNewScheduleForm()}
+          disabled={showNewScheduleForm}
         >
           <i className="bi bi-plus"></i> Add New Schedule
         </Button>
-        
-        {renderScheduleForm(newSchedule, true)}
       </div>
       
       {/* Existing schedules */}
-      <Table bordered>
+      <Table className="border border-collapse">
         <thead>
           <tr>
-            <th>Description</th>
-            <th>Actions</th>
+            <th className="border px-4 py-2">Description</th>
+            <th className="border text-center px-2 py-2" style={{ width: '100px' }}>Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {Object.entries(schedules).map(([id, schedule]) => (
-            <tr key={id}>
-              <td>
-                {isEditing && editingSchedule?.id === id ? (
-                  renderScheduleForm(editingSchedule)
-                ) : (
-                  formatScheduleDescription({...schedule, id})
-                )}
-              </td>
-              <td style={{ width: '200px' }}>
-                {isEditing && editingSchedule?.id === id ? (
-                  null // Buttons are inside the form when editing
-                ) : (
-                  <div className="d-flex gap-2">
-                    <Button variant="warning" size="sm" onClick={() => startEditing({...schedule, id})}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => confirmDelete(id)}>
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </td>
-            </tr>
+        <tbody>         
+          {/* Existing schedule rows */}
+          {Object.entries(localSchedules).map(([id, schedule]) => (
+            <ScheduleRow
+              key={id}
+              schedule={schedule.isEditing && editingSchedule ? editingSchedule : schedule}
+              onEdit={startEditing}
+              onSave={handleSaveEdit}
+              onCancel={cancelEditing}
+              onDelete={confirmDelete}
+              renderScheduleForm={renderScheduleForm}
+              formatScheduleDescription={formatScheduleDescription}
+            />
           ))}
+          {/* New schedule form row */}
+          {showNewScheduleForm && (
+            <ScheduleRow
+              schedule={{...newSchedule, id: 'new', isEditing: true}}
+              isNew={true}
+              onSave={handleAddSchedule}
+              onCancel={() => setShowNewScheduleForm(false)}
+              renderScheduleForm={renderScheduleForm}
+              formatScheduleDescription={formatScheduleDescription}
+            />
+          )}          
         </tbody>
       </Table>
       
       {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      <Dialog open={showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(false)}>
+        <DialogHeader>
+          <DialogTitle>Confirm Delete</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           Are you sure you want to delete this schedule?
-        </Modal.Body>
-        <Modal.Footer>
+        </DialogContent>
+        <DialogFooter>
           <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleDelete}>
+          <Button variant="destructive" onClick={handleDelete}>
             Delete
           </Button>
-        </Modal.Footer>
-      </Modal>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 };
