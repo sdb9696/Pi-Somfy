@@ -42,7 +42,7 @@ export const deleteShutter = async (id: string) => {
 };
 
 export const addSchedule = async (params: any) => {
-  const response = await api.post('addSchedule', params);
+  const response = await api.postForm('addSchedule', params);
   return response.data;
 };
 
@@ -52,7 +52,7 @@ export const editSchedule = async (id: string, params: any) => {
 };
 
 export const deleteSchedule = async (id: string) => {
-  const response = await api.post('deleteSchedule', { id });
+  const response = await api.postForm('deleteSchedule', { id });
   return response.data;
 };
 
