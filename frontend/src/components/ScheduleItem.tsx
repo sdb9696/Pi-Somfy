@@ -11,7 +11,6 @@ import {
 import { addSchedule, editSchedule, deleteSchedule } from '../services/api';
 import { Schedule } from '../types';
 import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1, Calendar } from 'lucide-react';
-import 'bootstrap/dist/css/bootstrap.min.css'; 
 
 
 interface ScheduleRowProps {

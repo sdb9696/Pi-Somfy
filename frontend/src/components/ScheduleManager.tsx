@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import ScheduleItem from './ScheduleItem';
 import { Schedule } from '../types';
 import { X } from 'lucide-react';
-import 'bootstrap/dist/css/bootstrap.min.css'; 
 
 // In ScheduleManager.tsx
 interface ScheduleManagerProps {
