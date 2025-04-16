@@ -242,11 +242,7 @@ const ScheduleItem = ({
       repeatValue = `${year}/${month}/${day}`;
     }
     
-    return {
-      ...schedule,
-      repeatType: type,
-      repeatValue
-    };
+    setLocalSchedule({...localSchedule, repeatType: type, repeatValue: repeatValue});
   };
   
   const handleAstroOffsetChange = (value: number) => {
@@ -303,12 +299,12 @@ const ScheduleItem = ({
             <div className="col-sm-2">
               <Form.Check 
                 type="switch"
-                id={`active-${isNew ? 'new' : localSchedule.id}`}
+                id={`active-${isNew ? 'new' : id}`}
                 label={
                   <span>
                     {localSchedule.active === 'active' ? 
-                      <><Play className="h-4 w-4 inline-block mr-1" /> Active</> : 
-                      <><Pause className="h-4 w-4 inline-block mr-1" /> Paused</>
+                      <><Play className="size-6 inline-block mr-1" /> Active</> : 
+                      <><Pause className="size-6 inline-block mr-1" /> Paused</>
                     }
                   </span>
                 }
@@ -338,11 +334,11 @@ const ScheduleItem = ({
                       }}
                     >
                       {localSchedule.timeType === 'clock' ? (
-                        <Clock className="h-6 w-6" />
+                        <Clock className="size-6" />
                       ) : localSchedule.timeValue.startsWith('sunrise') ? (
-                        <Sunrise className="h-6 w-6" />
+                        <Sunrise className="size-6" />
                       ) : (
-                        <Sunset className="h-6 w-6" />
+                        <Sunset className="size-6" />
                       )}
                     </Button>
                   </div>
@@ -362,9 +358,6 @@ const ScheduleItem = ({
                           }}
                           size="sm"
                         />
-                        <span className="input-group-text">
-                          <Clock className="h-4 w-4" />
-                        </span>
                       </div>
                     </Form.Group>
                   )}
@@ -372,7 +365,11 @@ const ScheduleItem = ({
                   {localSchedule.timeType === 'astro' && (
                     <Form.Group>
                       <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>
-                        {localSchedule.timeValue.startsWith('sunrise') ? 'Sunrise Offset' : 'Sunset Offset'}
+                        { (() => {
+                          const astro_at = localSchedule.timeValue.startsWith('sunrise') ? 'sunrise' : 'sunset';
+                          const before_after = astroOffset == 0 ? "At " : Math.abs(astroOffset) + (astroOffset < 0 ? " mins before " : " mins after ");
+                          return `${before_after}${astro_at}`;
+                        })()}
                       </Form.Label>
                       <Form.Range 
                         min={-300}
@@ -385,11 +382,6 @@ const ScheduleItem = ({
                         }}
                         style={{width: '140px'}}
                       />
-                      <div className="d-flex justify-content-between" style={{width: '140px', fontSize: '0.7rem'}}>
-                        <span>-300</span>
-                        <span className="text-center">{astroOffset} min</span>
-                        <span>+300</span>
-                      </div>
                     </Form.Group>
                   )}
                 </div>
@@ -413,9 +405,9 @@ const ScheduleItem = ({
                       }}
                     >
                       {localSchedule.repeatType === 'weekday' ? (
-                        <Calendar1 className="h-4 w-4"/>
+                        <Calendar1 className="size-6"/>
                       ) : (
-                        <CalendarSyncIcon className="h-4 w-4" />
+                        <CalendarSyncIcon className="size-6" />
                       )}
                     </Button>
                   </div>
@@ -468,9 +460,6 @@ const ScheduleItem = ({
                           }}
                           size="sm"
                         />
-                        <span className="input-group-text">
-                          <Calendar className="h-4 w-4" />
-                        </span>
                       </div>
                     </Form.Group>
                   )}
