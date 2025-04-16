@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Form } from 'react-bootstrap';
 import {
   Dialog,
@@ -10,7 +9,8 @@ import {
 } from "@/components/ui/dialog"
 import { addSchedule, editSchedule, deleteSchedule } from '../services/api';
 import { Schedule } from '../types';
-import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1, Calendar } from 'lucide-react';
+import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1 } from 'lucide-react';
+import { Button, Switch, Checkbox, Input, Label, Select, Slider } from '@/components/ui';
 
 
 interface ScheduleRowProps {
