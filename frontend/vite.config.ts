@@ -26,5 +26,12 @@ export default defineConfig({
   build: {
     outDir: '../html',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name].min.js`,
+        chunkFileNames: `assets/[name].min.js`,
+        assetFileNames: `assets/[name].min.[ext]`
+      }    
+    }
   }
 })
