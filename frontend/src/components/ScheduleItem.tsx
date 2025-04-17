@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Form } from 'react-bootstrap';
+//import { Form } from 'react-bootstrap';
 import {
   Dialog,
   DialogContent,
+  DialogTrigger,
   DialogHeader,
+  DialogClose,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
 import { addSchedule, editSchedule, deleteSchedule } from '../services/api';
 import { Schedule } from '../types';
 import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1 } from 'lucide-react';
-import { Button, Switch, Checkbox, Input, Label, Select, Slider } from '@/components/ui';
+import { Button, Switch, Checkbox, Input, Label, Select, Slider, SelectItem, SelectContent, SelectTrigger, SelectValue } from '@/components/ui';
 
 
 interface ScheduleRowProps {
@@ -36,8 +38,6 @@ const ScheduleItem = ({
   const [isEditing, setIsEditing] = useState(false || isNew);
 
   const [localSchedule, setLocalSchedule] = useState<Schedule>({...schedule});
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   useEffect(() => {
     setLocalSchedule({...schedule});
@@ -292,275 +292,275 @@ const ScheduleItem = ({
     const astroOffset = getAstroOffsetValue(localSchedule.timeValue);
     
     return (
-      <div className="p-3 border rounded mb-2">
-        <Form>
-          <div className="row">
-            {/* Active/Pause Toggle */}
-            <div className="col-sm-2">
-              <Form.Check 
-                type="switch"
+      <div className="p-3 border rounded-md mb-2">
+        <div className="flex flex-wrap gap-4">
+          {/* Active/Pause Toggle */}
+          <div className="flex-1 min-w-[120px]">
+            <div className="flex items-center gap-2 mt-2">
+              <Switch
                 id={`active-${isNew ? 'new' : id}`}
-                label={
-                  <span>
-                    {localSchedule.active === 'active' ? 
-                      <><Play className="size-6 inline-block mr-1" /> Active</> : 
-                      <><Pause className="size-6 inline-block mr-1" /> Paused</>
-                    }
-                  </span>
-                }
                 checked={localSchedule.active === 'active'}
-                onChange={(e) => {
-                  setLocalSchedule({...localSchedule, active: e.target.checked ? 'active' : 'paused'});
+                onCheckedChange={(checked) => {
+                  setLocalSchedule({...localSchedule, active: checked ? 'active' : 'paused'});
                 }}
-                className="mb-3 mt-2"
               />
+              <Label htmlFor={`active-${isNew ? 'new' : id}`} className="relative inline-flex items-center cursor-pointer">
+                  {localSchedule.active === 'active' ? 
+                    <><Play className="w-5 h-5 mr-1" /> Active</> : 
+                    <><Pause className="w-5 h-5 mr-1" /> Paused</>
+                  }
+              </Label>
             </div>
-            
-            {/* Time Type & Value */}
-            <div className="col-sm-3">
-              <div className="d-flex align-items-start">
-                {/* Time Type Icons */}
-                <div className="time-type-icons mr-2" style={{width: '40px', textAlign: 'center'}}>
-                  <div className="text-center mb-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-1"
-                      onClick={() => {
-                        const nextType = localSchedule.timeType === 'clock' ? 'sunrise' : 
-                        localSchedule.timeValue.startsWith('sunrise') ? 'sunset' : 'clock';
-                        handleTimeTypeChange(nextType);
-                      }}
-                    >
-                      {localSchedule.timeType === 'clock' ? (
-                        <Clock className="size-6" />
-                      ) : localSchedule.timeValue.startsWith('sunrise') ? (
-                        <Sunrise className="size-6" />
-                      ) : (
-                        <Sunset className="size-6" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Time Value Controls */}
-                <div className="time-value-controls">
-                  {localSchedule.timeType === 'clock' && (
-                    <Form.Group>
-                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Time</Form.Label>
-                      <div className="input-group clockpicker" style={{width: '120px'}}>
-                        <Form.Control 
-                          type="time" 
-                          value={localSchedule.timeValue} 
-                          onChange={(e) => {
-                            setLocalSchedule({...localSchedule, timeValue: e.target.value});
-                          }}
-                          size="sm"
-                        />
-                      </div>
-                    </Form.Group>
+          </div>
+          
+          {/* Time Type & Value */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-start gap-2">
+              {/* Time Type Icons */}
+              <div className="w-10 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 p-1"
+                  onClick={() => {
+                    const nextType = localSchedule.timeType === 'clock' ? 'sunrise' : 
+                    localSchedule.timeValue.startsWith('sunrise') ? 'sunset' : 'clock';
+                    handleTimeTypeChange(nextType);
+                  }}
+                >
+                  {localSchedule.timeType === 'clock' ? (
+                    <Clock className="size-6" />
+                  ) : localSchedule.timeValue.startsWith('sunrise') ? (
+                    <Sunrise className="size-6" />
+                  ) : (
+                    <Sunset className="size-6" />
                   )}
-                  
-                  {localSchedule.timeType === 'astro' && (
-                    <Form.Group>
-                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>
-                        { (() => {
-                          const astro_at = localSchedule.timeValue.startsWith('sunrise') ? 'sunrise' : 'sunset';
-                          const before_after = astroOffset == 0 ? "At " : Math.abs(astroOffset) + (astroOffset < 0 ? " mins before " : " mins after ");
-                          return `${before_after}${astro_at}`;
-                        })()}
-                      </Form.Label>
-                      <Form.Range 
-                        min={-300}
-                        max={300}
-                        step={5}
-                        value={astroOffset}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                            handleAstroOffsetChange(value);
-                        }}
-                        style={{width: '140px'}}
-                      />
-                    </Form.Group>
-                  )}
-                </div>
+                </Button>
               </div>
-            </div>
-            
-            {/* Repeat Type & Value */}
-            <div className="col-sm-3">
-              <div className="d-flex align-items-start">
-                {/* Repeat Type Icons */}
-                <div className="repeat-type-icons mr-2" style={{width: '40px', textAlign: 'left'}}>
-                  <div className="text-center mb-1">
-                    <Button
-                      type="button"                    
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 p-1"
-                      onClick={() => {
-                        const nextType = localSchedule.repeatType === 'weekday' ? 'once' : 'weekday';
-                        handleRepeatTypeChange(nextType);
-                      }}
-                    >
-                      {localSchedule.repeatType === 'weekday' ? (
-                        <Calendar1 className="size-6"/>
-                      ) : (
-                        <CalendarSyncIcon className="size-6" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Repeat Value Controls */}
-                <div className="repeat-value-controls">
-                  {localSchedule.repeatType === 'weekday' && (
-                    <Form.Group>
-                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Days</Form.Label>
-                      <div className="d-flex flex-wrap" style={{maxWidth: '150px'}}>
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-                          <div 
-                            key={day} 
-                            className={`day-btn me-1 mb-1 px-1 py-0 border rounded text-center ${
-                              Array.isArray(localSchedule.repeatValue) && localSchedule.repeatValue.includes(day) 
-                                ? 'bg-primary text-white' 
-                                : 'bg-white'
-                            }`}
-                            style={{fontSize: '0.7rem', width: '28px', cursor: 'pointer'}}
-                            onClick={() => {
-                              const currentDays = Array.isArray(localSchedule.repeatValue) ? [...localSchedule.repeatValue] : [];
-                              let newDays;
-                              
-                              if (currentDays.includes(day)) {
-                                newDays = currentDays.filter(d => d !== day);
-                              } else {
-                                newDays = [...currentDays, day];
-                              }
-                              
-                              setLocalSchedule({...localSchedule, repeatValue: newDays});
-                            }}
-                          >
-                            {day.substring(0, 2)}
-                          </div>
-                        ))}
-                      </div>
-                    </Form.Group>
-                  )}
-                  
-                  {localSchedule.repeatType === 'once' && (
-                    <Form.Group>
-                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Date</Form.Label>
-                      <div className="input-group" style={{width: '140px'}}>
-                        <Form.Control 
-                          type="date" 
-                          value={localSchedule.repeatValue as string} 
-                          onChange={(e) => {
-                            setLocalSchedule({...localSchedule, repeatValue: e.target.value});
-                          }}
-                          size="sm"
-                        />
-                      </div>
-                    </Form.Group>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Shutter Action & Selection */}
-            <div className="col-sm-4">
-              <div className="d-flex align-items-start">
-                {/* Action Icons */}
-                <div className="shutter-action-icons mr-3" style={{width: '40px', textAlign: 'center'}}>
-                  <div className="text-center mb-1">
-                    <Button
-                      type="button"
-                      variant='ghost'
-                      size="icon"
-                      className="h-8 w-8 mb-1"
-                      onClick={() => {
-                        handleShutterActionChange('up', percentage);
-                      }}
-                    >
-                      <ArrowBigUp className={`h-4 w-4 ${currentAction === 'up' ? 'text-primary' : 'text-gray-400'} fill-current`} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 mb-1"
-                      onClick={() => {
-                        handleShutterActionChange('stop');
-                      }}
-                    >
-                      <Square className={`h-4 w-4 ${currentAction === 'stop' ? 'text-primary' : 'text-gray-400'} fill-current`} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant='ghost'
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        handleShutterActionChange('down', percentage);
-                      }}
-                    >
-                      <ArrowBigDown className={`h-4 w-4 ${currentAction === 'down' ? 'text-primary' : 'text-gray-400'} fill-current`} />
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Percentage & Shutter Selection */}
-                <div>
-                  {currentAction !== 'stop' && (
-                    <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Percentage</Form.Label>
-                      <Form.Select 
-                        value={percentage}
-                        onChange={(e) => {
-                          const newPercentage = parseInt(e.target.value);
-                          handleShutterActionChange(currentAction, newPercentage);
-                        }}
-                        size="sm"
-                        style={{width: '100px'}}
-                      >
-                        <option value="0">Full</option>
-                        <option value="10">10%</option>
-                        <option value="20">20%</option>
-                        <option value="25">25%</option>
-                        <option value="30">30%</option>
-                        <option value="40">40%</option>
-                        <option value="50">50%</option>
-                        <option value="60">60%</option>
-                        <option value="70">70%</option>
-                        <option value="75">75%</option>
-                        <option value="80">80%</option>
-                        <option value="90">90%</option>
-                      </Form.Select>
-                    </Form.Group>
-                  )}
-                  
-                  <Form.Group>
-                    <Form.Label className="mb-1" style={{fontSize: '0.8rem'}}>Shutters</Form.Label>
-                    <Form.Select 
-                      multiple
-                      value={localSchedule.shutterIds}
+              
+              {/* Time Value Controls */}
+              <div className="flex-1">
+                {localSchedule.timeType === 'clock' && (
+                  <div className="mb-2">
+                    <Label className="text-xs font-medium mb-1 text-muted-foreground">Time</Label>
+                    <Input
+                      type="time"
+                      className="w-fit p-1 border rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm"
+                      value={localSchedule.timeValue}
                       onChange={(e) => {
-                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                        setLocalSchedule({...localSchedule, shutterIds: selectedOptions});
+                        setLocalSchedule({...localSchedule, timeValue: e.target.value});
                       }}
-                      size="sm"
-                      style={{ height: '80px', width: '160px' }}
-                    >
-                      {Object.entries(shutters).map(([id, shutter]) => (
-                        <option key={id} value={id}>{shutter}</option>
+                    />
+                  </div>
+                )}
+                
+                {localSchedule.timeType === 'astro' && (
+                  <div className="mb-2">
+                    <Label className="text-xs font-medium mb-1">
+                      {(() => {
+                        const astroAt = localSchedule.timeValue.startsWith('sunrise') ? 'sunrise' : 'sunset';
+                        const beforeAfter = astroOffset === 0 ? "At " : `${Math.abs(astroOffset)}${astroOffset < 0 ? " mins before " : " mins after "}`;
+                        return `${beforeAfter}${astroAt}`;
+                      })()}
+                    </Label>
+                    <Slider
+                      min={-300}
+                      max={300}
+                      step={5}
+                      value={[astroOffset]}
+                      onValueChange={(val) => {
+                        const value = val[0];
+                        handleAstroOffsetChange(value);
+                      }}
+                      className="w-36"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Repeat Type & Value */}
+          <div className="flex-1 min-w-[200px]">
+            <div className="flex items-start gap-2">
+              {/* Repeat Type Icons */}
+              <div className="w-10 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 p-1"
+                  onClick={() => {
+                    const nextType = localSchedule.repeatType === 'weekday' ? 'once' : 'weekday';
+                    handleRepeatTypeChange(nextType);
+                  }}
+                >
+                  {localSchedule.repeatType === 'weekday' ? (
+                    <Calendar1 className="size-6"/>
+                  ) : (
+                    <CalendarSyncIcon className="size-6" />
+                  )}
+                </Button>
+              </div>
+              
+              {/* Repeat Value Controls */}
+              <div className="flex-1">
+                {localSchedule.repeatType === 'weekday' && (
+                  <div className="mb-2">
+                    <Label className="text-xs font-medium mb-1 text-muted-foreground">Days</Label>
+                    <div className="flex flex-wrap gap-1 max-w-[150px]">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                        <Button
+                          type="button"
+                          key={day}
+                          className={`h-fit px-1 py-0 border rounded text-center text-xs w-7 cursor-pointer ${
+                            Array.isArray(localSchedule.repeatValue) && localSchedule.repeatValue.includes(day)
+                              ? 'bg-primary text-white'
+                              : 'bg-white text-gray-800 border-gray-300'
+                          }`}
+                          onClick={() => {
+                            const currentDays = Array.isArray(localSchedule.repeatValue) ? [...localSchedule.repeatValue] : [];
+                            let newDays;
+                            
+                            if (currentDays.includes(day)) {
+                              newDays = currentDays.filter(d => d !== day);
+                            } else {
+                              newDays = [...currentDays, day];
+                            }
+                            
+                            setLocalSchedule({...localSchedule, repeatValue: newDays});
+                          }}
+                        >
+                          {day.substring(0, 2)}
+                        </Button>
                       ))}
-                    </Form.Select>
-                  </Form.Group>
+                    </div>
+                  </div>
+                )}
+                
+                {localSchedule.repeatType === 'once' && (
+                  <div className="mb-2">
+                    <Label className="text-xs font-medium mb-1 text-muted-foreground">Date</Label>
+                    <Input
+                      type="date"
+                      className="w-36 p-1 border rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm"
+                      value={(localSchedule.repeatValue as string).replace("/", "-")}
+                      onChange={(e) => {
+                        setLocalSchedule({...localSchedule, repeatValue: e.target.value.replace("-", "/")});
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Shutter Action & Selection */}
+          <div className="flex-1 min-w-[250px]">
+            <div className="flex items-start gap-3">
+              {/* Action Icons */}
+              <div className="w-10 text-center">
+                <div className="flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-8"
+                    onClick={() => {
+                      handleShutterActionChange('up', percentage);
+                    }}
+                  >
+                    <ArrowBigUp className={`h-4 w-4 ${currentAction === 'up' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-8"
+                    onClick={() => {
+                      handleShutterActionChange('stop');
+                    }}
+                  >
+                    <Square className={`h-4 w-4 ${currentAction === 'stop' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-8"
+                    onClick={() => {
+                      handleShutterActionChange('down', percentage);
+                    }}
+                  >
+                    <ArrowBigDown className={`h-4 w-4 ${currentAction === 'down' ? 'text-primary' : 'text-gray-400'} fill-current`} />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Percentage & Shutter Selection */}
+              <div className="flex-1">
+                {currentAction !== 'stop' && (
+                  <div className="mb-2">
+                    <Label className="text-xs font-medium mb-1 text-muted-foreground">Percentage</Label>
+                    <Select
+                      value={percentage.toString()}
+                      onValueChange={(val) => {
+                        const newPercentage = parseInt(val);
+                        handleShutterActionChange(currentAction, newPercentage);
+                      }}
+                    >
+                      <SelectTrigger className="w-24 p-1 border rounded-md shadow-sm focus:ring-primary focus:border-primary text-sm">
+                        <SelectValue/>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Full</SelectItem>
+                        <SelectItem value="10">10%</SelectItem>
+                        <SelectItem value="20">20%</SelectItem>
+                        <SelectItem value="25">25%</SelectItem>
+                        <SelectItem value="30">30%</SelectItem>
+                        <SelectItem value="40">40%</SelectItem>
+                        <SelectItem value="50">50%</SelectItem>
+                        <SelectItem value="60">60%</SelectItem>
+                        <SelectItem value="70">70%</SelectItem>
+                        <SelectItem value="75">75%</SelectItem>
+                        <SelectItem value="80">80%</SelectItem>
+                        <SelectItem value="90">90%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                <div className="mb-2">
+                  <Label className="text-xs font-medium mb-1 text-muted-foreground">Shutters</Label>
+                  <div>
+                      {Object.entries(shutters).map(([shutter_id, shutter]) => (
+                        <div className="flex items-left space-x-2 space-y-1">
+                          <Checkbox
+                            id={`shutters-${isNew ? 'new' : id}-${shutter_id}`}
+                            key={`shutters-${isNew ? 'new' : id}-${shutter_id}`}
+                            value={shutter_id}
+                            name={shutter}
+                            checked={localSchedule.shutterIds.includes(shutter_id)}
+                            onCheckedChange={(checked) => {
+                            const currentIds = [...localSchedule.shutterIds];
+                            if (checked) {
+                              currentIds.push(shutter_id);
+                            } else {
+                              currentIds.splice(currentIds.indexOf(shutter_id), 1);
+                            }
+                            setLocalSchedule({...localSchedule, shutterIds: currentIds});
+                        }}
+                        />
+                        <Label htmlFor={`shutters-${isNew ? 'new' : id}-${shutter_id}`}>{shutter}</Label>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </Form>
+        </div>
       </div>
     );
   };
@@ -603,36 +603,34 @@ const ScheduleItem = ({
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={ () => setShowDeleteConfirm(true) }
-              className="h-8 w-8"
-              title="Delete"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-            {showDeleteConfirm && (
-              <Dialog open={showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(false)}>
-              <DialogHeader>
-                <DialogTitle>Confirm Delete</DialogTitle>
-              </DialogHeader>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
               <DialogContent>
-                Are you sure you want to delete this schedule?
+                <DialogHeader>
+                  <DialogTitle>Confirm Delete</DialogTitle>
+                </DialogHeader>                
+                  Are you sure you want to delete this schedule?
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="secondary">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button variant="destructive" onClick={ handleDelete }>
+                    Delete
+                  </Button>
+                </DialogFooter>                
               </DialogContent>
-              <DialogFooter>
-                <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={() => {
-                  handleDelete();
-                  setShowDeleteConfirm(false);
-                }}>
-                  Delete
-                </Button>
-              </DialogFooter>
             </Dialog>
-            )}         
           </div>
         )}
       </td>
