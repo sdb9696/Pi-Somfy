@@ -40,6 +40,8 @@ except Exception as e:
     print(f"\n\nThis program requires the modules located from the same github repository that are not present.\nError: {e}")
     sys.exit(2)
 
+LOGGER = logging.getLogger(__name__)
+
 class Shutter(MyLog):
     #Button values
     buttonUp = 0x2
@@ -295,6 +297,9 @@ class operateShutters(MyLog):
 
     def __init__(self, args = None):
         super().__init__()
+
+        LOGGER.debug("Logging with new logger")
+
         self.ProgramName = "operate Somfy Shutters"
         self.Version = "Unknown"
         self.log = None

@@ -1,12 +1,44 @@
+#!/usr/bin/python3
 import click
-import socket
-import os
 import sys
-from typing import Optional, Tuple
+from typing import Optional
+import logging
+import socket
+import logging.config
+import click
+import os
 from .operateShutters import operateShutters
+from logging.handlers import RotatingFileHandler
 
+def setup_logger(log_file, level=logging.DEBUG, stream=False):
+    handlers = []
 
-#------------------- Command-line interface for monitor ------------------------
+    if log_file:
+        file_handler = RotatingFileHandler(
+            log_file,
+            mode='a',
+            maxBytes=50000,
+            backupCount=5
+        )
+        handlers.append(file_handler)
+
+    if stream:
+        console_handler = logging.StreamHandler()
+        handlers.append(console_handler)
+
+    formatter = logging.Formatter('%(asctime)s : [%(levelname)s] (%(threadName)-10s) %(message)s')
+    for h in handlers:
+        if isinstance(h, RotatingFileHandler):
+            h.setFormatter(formatter)
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers = []
+    for h in handlers:
+        root.addHandler(h)
+
+    logging.getLogger(__name__).debug("Logger initialized")
+
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("shutter_name", required=False)
@@ -70,6 +102,12 @@ from .operateShutters import operateShutters
 @click.option("-echo", hidden=True, is_flag=True)
 @click.option("-m", "--mqtt", is_flag=True, help="Enable MQTT integration")
 @click.option("-mqtt", hidden=True, is_flag=True)
+@click.option(
+    "-l",
+    "--log_file",
+    "log_file",
+    default=None,
+)
 def cli(
     shutter_name: Optional[str],
     config_file: str,
@@ -84,6 +122,7 @@ def cli(
     auto: bool,
     echo: bool,
     mqtt: bool,
+    log_file: Optional[str],
 ) -> None:
     """
     Operate Somfy Shutters via command-line interface.
@@ -91,6 +130,7 @@ def cli(
     This command-line tool allows control and automation of Somfy Shutters with various options
     for manual control, scheduling, and integration with external services like Alexa and MQTT.
     """
+    setup_logger(log_file, logging.DEBUG, True)
     # Create a simple args object to mimic argparse's behavior
     class Args:
         def __init__(self):
