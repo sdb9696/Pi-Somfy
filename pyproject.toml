@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-pi-somfy = "pi_somfy.operateShutters:main"
+pi-somfy = "pi_somfy.cli:cli"
 
 [build-system]
 requires = ["hatchling"]

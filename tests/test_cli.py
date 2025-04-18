@@ -1,6 +1,7 @@
 import pytest
 from click.testing import CliRunner
-from pi_somfy.operateShutters import main, Shutter
+from pi_somfy.cli import cli
+from pi_somfy.operateShutters import Shutter
 from unittest.mock import patch, Mock
 from pathlib import Path
 
@@ -14,7 +15,7 @@ def test_cli_services():
     with runner.isolated_filesystem():
         with patch('pi_somfy.operateShutters.operateShutters.LoopUntilComplete', return_value=None) as mock_loop_until_complete:
             res = runner.invoke(
-                main, ["--auto", "--echo", "--mqtt"], catch_exceptions=False,
+                cli, ["--auto", "--echo", "--mqtt"], catch_exceptions=False,
             )
 
         web_server_msg = "Starting WebServer on Port 8080"
@@ -31,7 +32,7 @@ def test_cli_press():
 
     with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
         res = runner.invoke(
-            main, ["TestShutter", "--press", "up", "--press", "down", "--config", "config/test_config.toml"], catch_exceptions=False,
+            cli, ["TestShutter", "--press", "up", "--press", "down", "--config", "config/test_config.toml"], catch_exceptions=False,
         )
 
     web_server_msg = "Starting WebServer on Port 8080"
@@ -92,7 +93,7 @@ EnableDiscovery=true
             
             # Run the CLI with the cleaned config
             res = runner.invoke(
-                main, ["TestShutter", "--press", "up", "--press", "down", "--config", "test_cleaned.conf"], catch_exceptions=False,
+                cli, ["TestShutter", "--press", "up", "--press", "down", "--config", "test_cleaned.conf"], catch_exceptions=False,
             )
             
             
