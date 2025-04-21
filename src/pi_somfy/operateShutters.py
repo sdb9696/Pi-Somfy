@@ -19,7 +19,7 @@ import threading
 import getpass
 import click
 import subprocess
-from typing import Optional
+from typing import Optional, List, Tuple
 from pathlib import Path
 
 try:
@@ -43,6 +43,38 @@ except Exception as e:
 
 LOGGER = logging.getLogger(__name__)
 
+# Create a simple args object to mimic argparse's behavior
+class Args:
+    def __init__(
+        self,
+        shutter_name: Optional[str] = None,
+        config_file: Optional[str] = None,
+        up: bool = False,
+        down: bool = False,
+        stop: bool = False,
+        program: bool = False,
+        press: Optional[List[str]] = None,
+        long: bool = False,
+        demo: bool = False,
+        duskdawn: Optional[Tuple[int, int]] = None,
+        auto: bool = False,
+        echo: bool = False,
+        mqtt: bool = False
+    ):
+        self.shutterName = shutter_name
+        self.ConfigFile = config_file
+        self.up = up
+        self.down = down
+        self.stop = stop
+        self.program = program
+        self.press = press if press else None
+        self.long = long
+        self.demo = demo
+        self.duskdawn = duskdawn
+        self.auto = auto
+        self.echo = echo
+        self.mqtt = mqtt
+        
 class Shutter(MyLog):
     #Button values
     buttonUp = 0x2
@@ -300,7 +332,7 @@ class Shutter(MyLog):
 
 class operateShutters(MyLog):
 
-    def __init__(self, args = None):
+    def __init__(self, config: MyConfig, args: Args = None):
         super().__init__()
 
         LOGGER.debug("Logging with new logger")
@@ -311,33 +343,13 @@ class operateShutters(MyLog):
         self.IsStopping = False
         self.ProgramComplete = False
 
-        if args.ConfigFile == None:
-            self.ConfigFile = "/etc/operateShutters.conf"
-        else:
-            self.ConfigFile = args.ConfigFile
-
         self.console = SetupLogger("shutters_console", log_file = "", stream = True)
 
         if os.geteuid() != 0:
             self.LogConsole("You are not running as sudo, you will need to ensure you have appropriate permissions for your config (i.e. ports less than 1024) or run this script as sudo")
 
-        if not os.path.isfile(self.ConfigFile):
-            self.LogConsole("Creating new config file : " + self.ConfigFile)
-            defaultConfigFile = os.path.dirname(os.path.realpath(__file__))+'/config/defaultConfig.conf'
-            print(defaultConfigFile);
-            if not os.path.isfile(defaultConfigFile):
-                self.LogConsole("Failure to create new config file: "+defaultConfigFile)
-                sys.exit(1)
-            else: 
-                copyfile(defaultConfigFile, self.ConfigFile)
-
         # read config file
-        self.config = MyConfig(filename = self.ConfigFile, log = self.console)
-        result = self.config.LoadConfig();
-        if not result:
-            self.LogConsole("Failure to load configuration parameters")
-            sys.exit(1)
-
+        self.config = config
 
         # log errors in this module to a file
         self.log = SetupLogger("shutters", self.config.LogLocation + "operateShutters-" + getpass.getuser() + ".log", stream=self.config.LogToConsole)

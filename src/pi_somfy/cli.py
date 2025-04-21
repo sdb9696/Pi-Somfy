@@ -7,7 +7,10 @@ import socket
 import logging.config
 import click
 import os
-from .operateShutters import operateShutters
+import getpass
+from pathlib import Path
+from .operateShutters import operateShutters, Args
+from .myconfig import MyConfig
 from logging.handlers import RotatingFileHandler
 
 def setup_logger(log_file, level=logging.DEBUG, stream=False):
@@ -43,13 +46,13 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("shutter_name", required=False)
 # -config option needs to preceed other config_file option or will overwite the default
-@click.option("-config", "config_file", hidden=True)
+@click.option("-config", "config_location", hidden=True)
 @click.option(
     "-c",
     "--config",
-    "config_file",
-    default=f"{os.getcwd()}/config/operateShutters.conf",
-    help="Name of the Config File (incl full Path)",
+    "config_location",
+    default=f"{os.getcwd()}/config/",
+    help="Config location. If folder name the filenames will be operateShutters.[toml/json]. If full name of a Config File the filenames will be fileName.[toml/json]",
     type=click.Path(exists=True),
 )
 @click.option("-u", "--up", is_flag=True, help="Raise the Shutter")
@@ -110,7 +113,7 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
 )
 def cli(
     shutter_name: Optional[str],
-    config_file: str,
+    config_location: str,
     up: bool,
     down: bool,
     stop: bool,
@@ -130,26 +133,36 @@ def cli(
     This command-line tool allows control and automation of Somfy Shutters with various options
     for manual control, scheduling, and integration with external services like Alexa and MQTT.
     """
-    setup_logger(log_file, logging.DEBUG, True)
-    # Create a simple args object to mimic argparse's behavior
-    class Args:
-        def __init__(self):
-            self.shutterName = shutter_name
-            self.ConfigFile = config_file
-            self.up = up
-            self.down = down
-            self.stop = stop
-            self.program = program
-            self.press = press if press else None
-            self.long = long
-            self.demo = demo
-            self.duskdawn = duskdawn
-            self.auto = auto
-            self.echo = echo
-            self.mqtt = mqtt
+    path = Path(config_location)
+    if path.is_dir():
+        filename_no_ext = Path(config_location) / "operateShutters"
+    else:
+        filename_no_ext = path.parent / path.stem
 
+    config = MyConfig(filename=filename_no_ext)
+    result =config.LoadConfig()
+    if not result:
+        click.error("Failure to load configuration parameters")    
+    
+    log_file = config.LogLocation + "operateShutters-" + getpass.getuser() + ".log"
+    setup_logger(log_file, logging.DEBUG, config.LogToConsole)
+
+    args = Args(
+        shutter_name=shutter_name,
+        up=up,
+        down=down,
+        stop=stop,
+        program=program,
+        press=press,
+        long=long,
+        demo=demo,
+        duskdawn=duskdawn,
+        auto=auto,
+        echo=echo,
+        mqtt=mqtt
+    )
     # Start things up
-    my_shutter = operateShutters(args=Args())
+    my_shutter = operateShutters(config=config, args=args)
 
     try:
         my_shutter.LoopUntilComplete()

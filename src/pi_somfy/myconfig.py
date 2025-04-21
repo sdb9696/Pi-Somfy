@@ -2,6 +2,7 @@
 
 import threading
 import json
+import logging
 from tomlkit import dumps, parse, table, nl, document, comment
 from pathlib import Path
 from contextlib import contextmanager
@@ -141,7 +142,7 @@ class MyConfig(MyLog):
         """
         super().__init__()
         self.log = log
-        self.FileName = filename
+        self.filepath = Path(filename)
         self.CriticalLock = threading.Lock()
         self.InitComplete = False
 
@@ -154,6 +155,7 @@ class MyConfig(MyLog):
         self.PIGPIO_Connect_Timeout = 5
         self.LogLocation = "."
         self.LogToConsole = True
+        self.LogLevel = logging.DEBUG
         self.Latitude = 51.4769
         self.Longitude = 0
         self.SendRepeat = 2
@@ -176,13 +178,16 @@ class MyConfig(MyLog):
         # File paths for new format
         self.toml_path = Path(filename).with_suffix('.toml')
         self.json_path = Path(filename).with_suffix('.json')
-        self.schedule_json_path = Path(filename).parent / 'schedule.json'
+        if (suffix := self.filepath.suffix) and suffix not in ('.toml', '.json'):
+            self.old_ini_path = self.filepath
+        else:
+            self.old_ini_path = self.filepath.with_suffix('.conf')
 
         self.InitComplete = True
 
     def _is_old_format(self) -> bool:
         """Check if old INI format exists and new format doesn't."""
-        old_ini_exists = Path(self.FileName).exists()
+        old_ini_exists = self.old_ini_path.exists()
         new_toml_exists = self.toml_path.exists()
         return old_ini_exists and not new_toml_exists
 
@@ -261,7 +266,7 @@ class MyConfig(MyLog):
         """Migrate configuration from old INI format to new TOML/JSON format."""
         self.LogInfo("Migrating old INI configuration to new TOML/JSON format")
 
-        self._load_legacy_config(self.FileName)
+        self._load_legacy_config(self.old_ini_path)
 
         doc = self._create_new_toml()
         toml_dump = dumps(doc)
@@ -278,7 +283,7 @@ class MyConfig(MyLog):
             with open(self.json_path, 'w') as f:
                 json.dump(shutters_schedule_dump, f, indent=2)
 
-        self.LogInfo("Migrating old INI configuration to new TOML/JSON format completed")
+        self.LogInfo("Migrated old INI configuration to new TOML/JSON format")
 
     def _create_new_toml(self):
         """Create new TOML file."""
