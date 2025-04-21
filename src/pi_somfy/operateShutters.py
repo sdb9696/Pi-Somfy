@@ -346,10 +346,6 @@ class operateShutters(MyLog):
             self.LogWarn("operateShutters.py is already loaded.")
             sys.exit(1)
 
-        if self.config.PIGPIOHost == "localhost" and not self.startPIGPIO():
-            self.LogConsole("Not able to start PIGPIO")
-            sys.exit(1)
-
         self.shutter = Shutter(log = self.log, config = self.config)
 
         # atexit.register(self.Close)
@@ -388,41 +384,6 @@ class operateShutters(MyLog):
         except OSError as err:
             return True
 
-    #--------------------- operateShutters::startPIGPIO ------------------------------
-
-    def startPIGPIO(self):
-        
-        status, process = subprocess.getstatusoutput('pidof pigpiod')
-        if status:  #  it wasn't running, so start it
-            
-            if os.geteuid() == 0:
-                self.LogInfo ("pigpiod was not running, trying to start it")
-                subprocess.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
-                time.sleep(0.5)
-                # check it again
-                status, process = subprocess.getstatusoutput('pidof pigpiod')
-            else:
-                self.LogInfo ("pigpiod was not running and you are not running as sudo, try to start it from a command prompt with the following command: sudo pigpiod -l -m")
-                return True
-
-        if not status:  # if it was started successfully (or was already running)...
-            pigpiod_process = process
-            self.LogInfo ("pigpiod is running, process ID is {} ".format(pigpiod_process))
-
-            try:
-                pi = pigpio.pi()  # local GPIO only
-                if not pi.connected:
-                    self.LogError("pigpio connection could not be established. Check logs to get more details.")
-                    return False
-                else:
-                    self.LogInfo("pigpio's pi instantiated.")
-            except Exception as e:
-                start_pigpiod_exception = str(e)
-                self.LogError("problem instantiating pi: {}".format(start_pigpiod_exception))
-        else:
-            self.LogError("start pigpiod was unsuccessful.")
-            return False
-        return True
 
     #--------------------- operateShutters::ProcessCommand -----------------------------------------------
     def ProcessCommand(self, args):
