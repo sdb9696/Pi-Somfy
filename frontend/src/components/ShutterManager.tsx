@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Table, Button, Form, Modal } from 'react-bootstrap';
+import { Table, Form, Modal } from 'react-bootstrap';
 import { addShutter, editShutter, deleteShutter, sendCommand } from '../services/api';
+import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1 } from 'lucide-react';
+import { Button, Switch, Checkbox, Input, Label, Select, Slider, SelectItem, SelectContent, SelectTrigger, SelectValue } from '@/components/ui';
 
 interface ShutterManagerProps {
   // Update types to match actual data structure
@@ -87,7 +89,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
   return (
     <div>
       <div className="mb-3">
-        <Button variant="primary" onClick={() => setNewShutter({ name: '', duration: '10' })}>
+        <Button variant="default" onClick={() => setNewShutter({ name: '', duration: '10' })}>
           <i className="bi bi-plus"></i> Add New
         </Button>
       </div>
@@ -128,27 +130,27 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
               <td>
                 <div className="d-flex gap-2">
                   {isEditing && editingShutter?.id === id ? (
-                    <Button variant="success" size="sm" onClick={handleSaveEdit}>
+                    <Button variant="default" size="sm" onClick={handleSaveEdit}>
                       Save
                     </Button>
                   ) : (
                     <>
-                      <Button variant="primary" size="sm" onClick={() => handleShutterAction(id, 'up')}>
+                      <Button variant="default" size="sm" onClick={() => handleShutterAction(id, 'up')}>
                         Up
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => handleShutterAction(id, 'stop')}>
                         Stop
                       </Button>
-                      <Button variant="primary" size="sm" onClick={() => handleShutterAction(id, 'down')}>
+                      <Button variant="default" size="sm" onClick={() => handleShutterAction(id, 'down')}>
                         Down
                       </Button>
-                      <Button variant="warning" size="sm" onClick={() => startEditing(id)}>
+                      <Button variant="ghost" size="sm" onClick={() => startEditing(id)}>
                         Edit
                       </Button>
-                      <Button variant="danger" size="sm" onClick={() => confirmDelete(id)}>
+                      <Button variant="destructive" size="sm" onClick={() => confirmDelete(id)}>
                         Delete
                       </Button>
-                      <Button variant="info" size="sm" onClick={() => handleProgram(id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleProgram(id)}>
                         Program
                       </Button>
                     </>
@@ -177,7 +179,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
               />
             </td>
             <td>
-              <Button variant="success" onClick={handleAddShutter}>
+              <Button variant="default" onClick={handleAddShutter}>
                 Add
               </Button>
             </td>
@@ -197,7 +199,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
           <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleDelete}>
+          <Button variant="destructive" onClick={handleDelete}>
             Delete
           </Button>
         </Modal.Footer>
@@ -213,7 +215,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
           <p>Then click on "Finished".</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowProgramModal(false)}>
+          <Button variant="default" onClick={() => setShowProgramModal(false)}>
             Finished
           </Button>
         </Modal.Footer>
