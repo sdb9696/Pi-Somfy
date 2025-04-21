@@ -193,7 +193,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
             self.config.addShutter(name, duration)
-            id = self.config.ShuttersByName[name]['id']
+            id = self.config.ShuttersByName[name]
             self.LogDebug("got a new shutter id: "+str(id))
             return {'status': 'OK', 'id': str(id)}
 

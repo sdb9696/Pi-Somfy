@@ -17,27 +17,27 @@ export const getConfig = async () => {
 };
 
 export const sendCommand = async (shutter: string, command: string) => {
-  const response = await api.post(command, { shutter });
+  const response = await api.postForm(command, { shutter });
   return response.data;
 };
 
 export const setLocation = async (lat: number, lng: number) => {
-  const response = await api.post('setLocation', { lat, lng });
+  const response = await api.postForm('setLocation', { lat, lng });
   return response.data;
 };
 
 export const addShutter = async (name: string, duration: string) => {
-  const response = await api.post('addShutter', { name, duration });
+  const response = await api.postForm('addShutter', { name, duration });
   return response.data;
 };
 
 export const editShutter = async (id: string, name: string, duration: string) => {
-  const response = await api.post('editShutter', { id, name, duration });
+  const response = await api.postForm('editShutter', { id, name, duration });
   return response.data;
 };
 
 export const deleteShutter = async (id: string) => {
-  const response = await api.post('deleteShutter', { id });
+  const response = await api.postForm('deleteShutter', { id });
   return response.data;
 };
 

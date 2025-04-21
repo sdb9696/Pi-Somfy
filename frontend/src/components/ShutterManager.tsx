@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { Table, Form, Modal } from 'react-bootstrap';
 import { addShutter, editShutter, deleteShutter, sendCommand } from '../services/api';
-import { X, Save, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogClose,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { X, Save, Link, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Plus, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1 } from 'lucide-react';
 import { Button, Switch, Checkbox, Input, Label, Select, Slider, SelectItem, SelectContent, SelectTrigger, SelectValue } from '@/components/ui';
 
 interface ShutterManagerProps {
@@ -20,11 +29,14 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
   
   // For new shutter form
   const [newShutter, setNewShutter] = useState({ name: '', duration: '10' });
+  const [addingShutter, setAddingShutter] = useState(false);
+  const [programShutterId, setProgramShutterId] = useState<string | null>(null);
   
   const handleAddShutter = async () => {
     try {
       await addShutter(newShutter.name, newShutter.duration);
       setNewShutter({ name: '', duration: '10' });
+      setAddingShutter(false);
       onShutterChange();
     } catch (error) {
       console.error('Error adding shutter:', error);
@@ -36,6 +48,11 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
     const duration = String(shutterDurations[id] || '10');
     setEditingShutter({ id, name, duration });
     setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditingShutter(null);
   };
   
   const handleSaveEdit = async () => {
@@ -69,27 +86,30 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
     }
   };
   
-  const handleProgram = async (id: string) => {
+  const handleShowProgram = async (id: string) => {
     try {
-      await sendCommand(id, 'program');
       setShowProgramModal(true);
+      setProgramShutterId(id);
     } catch (error) {
       console.error('Error programming shutter:', error);
     }
   };
-  
-  const handleShutterAction = async (id: string, action: 'up' | 'down' | 'stop') => {
+
+  const handleFinishedProgram = async () => {
+    if (!programShutterId) return;
     try {
-      await sendCommand(id, action);
+      await sendCommand(programShutterId, 'program');
     } catch (error) {
-      console.error(`Error with shutter action ${action}:`, error);
+      console.error('Error programming shutter:', error);
     }
+    setShowProgramModal(false);
+    setProgramShutterId(null);
   };
   
   return (
     <div>
       <div className="mb-3">
-        <Button variant="default" onClick={() => setNewShutter({ name: '', duration: '10' })}>
+        <Button variant="default" onClick={() => setAddingShutter(true)}>
           <i className="bi bi-plus"></i> Add New
         </Button>
       </div>
@@ -130,27 +150,23 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
               <td>
                 <div className="d-flex gap-2">
                   {isEditing && editingShutter?.id === id ? (
+                    <>
                     <Button variant="default" size="sm" onClick={handleSaveEdit}>
                       Save
                     </Button>
+                    <Button variant="default" size="sm" onClick={cancelEditing}>
+                      Cancel
+                    </Button>
+                    </>
                   ) : (
                     <>
-                      <Button variant="default" size="sm" onClick={() => handleShutterAction(id, 'up')}>
-                        Up
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => handleShutterAction(id, 'stop')}>
-                        Stop
-                      </Button>
-                      <Button variant="default" size="sm" onClick={() => handleShutterAction(id, 'down')}>
-                        Down
-                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => startEditing(id)}>
                         Edit
                       </Button>
                       <Button variant="destructive" size="sm" onClick={() => confirmDelete(id)}>
                         Delete
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleProgram(id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleShowProgram(id)}>
                         Program
                       </Button>
                     </>
@@ -160,7 +176,8 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
             </tr>
           ))}
           
-          {/* Add new shutter row */}
+          {/* Add new shutter row */
+          addingShutter && (
           <tr>
             <td>
               <Form.Control
@@ -180,10 +197,14 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
             </td>
             <td>
               <Button variant="default" onClick={handleAddShutter}>
-                Add
+                Save
+              </Button>
+              <Button variant="secondary" onClick={() => setAddingShutter(false)}>
+                Cancel
               </Button>
             </td>
           </tr>
+          )}
         </tbody>
       </Table>
       
@@ -215,7 +236,10 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
           <p>Then click on "Finished".</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="default" onClick={() => setShowProgramModal(false)}>
+        <Button variant="secondary" onClick={() => setShowProgramModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="default" onClick={() => handleFinishedProgram()}>
             Finished
           </Button>
         </Modal.Footer>

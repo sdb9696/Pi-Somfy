@@ -428,7 +428,7 @@ class MyConfig(MyLog):
                 raise ValueError(f"Shutter {shutterId} already exists")
             json_dict['shutters'][shutterId] = shutter
 
-        self.ShuttersByName[name] = shutter
+        self.ShuttersByName[name] = shutterId
         self.Shutters[shutterId] = shutter
     
     @contextmanager
@@ -453,8 +453,9 @@ class MyConfig(MyLog):
         with self.json_config() as json_dict:
             json_dict['shutters'][shutterId]['active'] = active
 
-        self.ShuttersByName.pop(self.config.Shutters[id]['name'], None)
-        self.Shutters.pop(id, None)
+        if not active:
+            self.ShuttersByName.pop(self.Shutters[shutterId]['name'], None)
+            self.Shutters.pop(shutterId, None)
 
     def setSchedule(self, scheduleId: str, active: bool, repeatType: str, repeatValue: str, timeType: str, timeValue: str, shutterAction: str, shutterIds: str):
         """Set schedule and save to config.
