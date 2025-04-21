@@ -151,6 +151,7 @@ class MyConfig(MyLog):
         self.Rfm69Enabled = False
         self.PIGPIOHost = "localhost"
         self.PIGPIOPort = 8888
+        self.PIGPIO_Connect_Timeout = 5
         self.LogLocation = "."
         self.LogToConsole = True
         self.Latitude = 51.4769

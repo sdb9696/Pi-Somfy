@@ -36,6 +36,7 @@ try:
     from .somfyRfm69Transmitter import SomfyRfm69Tx
     from .somfyRtsWaveForm import createWaveForm
     from time import sleep
+    from .pigpio_helper import create_pigpio_connection
 except Exception as e:
     print(f"\n\nThis program requires the modules located from the same github repository that are not present.\nError: {e}")
     sys.exit(2)
@@ -263,7 +264,7 @@ class Shutter(MyLog):
 
                 start_time = time.time()
                 self.LogDebug(f"Connecting to PIGPIO")
-                pi = pigpio.pi(host=self.config.PIGPIOHost, port=self.config.PIGPIOPort)
+                pi = create_pigpio_connection(self.config.PIGPIOHost, self.config.PIGPIOPort, timeout=self.config.PIGPIO_Connect_Timeout)
                 end_time = time.time()
                 self.LogDebug(f"PIGPIO connection duration: {end_time - start_time:.3f} seconds")
 
@@ -285,7 +286,7 @@ class Shutter(MyLog):
 
                 pi.stop()
             else:
-                with SomfyRfm69Tx(self.config.Rfm69ResetGPIO, self.TXGPIO, spichannel=self.config.Rfm69SPIChannel, pigpiohost=self.config.PIGPIOHost, pigpioport=self.config.PIGPIOPort) as s69Tx:
+                with SomfyRfm69Tx(self.config.Rfm69ResetGPIO, self.TXGPIO, spichannel=self.config.Rfm69SPIChannel, pigpiohost=self.config.PIGPIOHost, pigpioport=self.config.PIGPIOPort, pigpio_connect_timeout=self.config.PIGPIO_Connect_Timeout) as s69Tx:
 
                     s69Tx.sendWaveForm(wf)
 

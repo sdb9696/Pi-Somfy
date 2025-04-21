@@ -24,6 +24,9 @@ import pigpio as gpio
 from .rfm69 import Rfm69
 import json
 from .somfyRtsWaveForm import createWaveForm
+from .pigpio_helper import create_pigpio_connection
+import threading
+import time
 
 # define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
 RESETPINDEFAULT = 25
@@ -39,7 +42,7 @@ class SomfyRfm69Tx(object):
 
     clock = 640    
 
-    def __init__(self, resetBcmPinNumber = RESETPINDEFAULT, dataBcmPinNumber = DATAPINDEFAULT, pigpiohost="localhost", pigpioport=8888, spichannel=0, spibaudrate=32000):
+    def __init__(self, resetBcmPinNumber = RESETPINDEFAULT, dataBcmPinNumber = DATAPINDEFAULT, pigpiohost="localhost", pigpioport=8888, spichannel=0, spibaudrate=32000, pigpio_connect_timeout=None):
 
         self.piconnected = False
 
@@ -49,13 +52,12 @@ class SomfyRfm69Tx(object):
         self.pigpioport = pigpioport
         self.spichannel = spichannel
         self.spibaudrate = spibaudrate
+        self.pigpio_connect_timeout = pigpio_connect_timeout
+        self.pi = None
 
 
     def __enter__(self):
-        self.pi = gpio.pi(self.pigpiohost, self.pigpioport)
-        if not self.pi.connected:
-            raise RuntimeError("Cannot connect to pigpiod, is the daemon running? (sudo pigpiod)")
-        self.piconnected = True        
+        self.pi = create_pigpio_connection(self.pigpiohost, self.pigpioport, timeout=self.pigpio_connect_timeout)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
