@@ -110,140 +110,146 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
     <div>
       <div className="mb-3">
         <Button variant="default" onClick={() => setAddingShutter(true)}>
-          <i className="bi bi-plus"></i> Add New
+          <Plus className="mr-2 h-4 w-4" /> Add New
         </Button>
       </div>
-      
-      <Table bordered>
-        <thead>
-          <tr>
-            <th style={{ width: "55%" }}>Shutter Name</th>
-            <th style={{ width: "20%" }}>Operation Time (Seconds)</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+
+      <div className="border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-12 bg-gray-100 p-2 font-semibold gap-x-2">
+          <div className="col-span-6 md:col-span-7 text-xs sm:text-sm">Shutter Name</div>
+          <div className="col-span-2 text-xs sm:text-sm">
+            <span className="hidden sm:inline">Operation Time (Seconds)</span>
+            <span className="sm:hidden">Time (s)</span>
+          </div>
+          <div className="col-span-4 md:col-span-3 text-xs sm:text-sm">Actions</div>
+        </div>
+        <div>
           {Object.entries(shutters).map(([id, name]) => (
-            <tr key={id}>
-              <td>
+            <div key={id} className="grid grid-cols-12 p-2 border-t items-center gap-x-2">
+              <div className="col-span-6 md:col-span-7">
                 {isEditing && editingShutter?.id === id ? (
-                  <Form.Control
+                  <Input
                     type="text"
                     value={editingShutter.name}
-                    onChange={(e) => setEditingShutter({...editingShutter, name: e.target.value})}
+                    onChange={(e) => setEditingShutter({ ...editingShutter, name: e.target.value })}
+                    className="w-full text-xs sm:text-sm h-8 sm:h-10"
                   />
                 ) : (
-                  name
+                  <span className="text-xs sm:text-base gap-x-2">{name}</span>
                 )}
-              </td>
-              <td>
+              </div>
+              <div className="col-span-2">
                 {isEditing && editingShutter?.id === id ? (
-                  <Form.Control
+                  <Input
                     type="text"
                     value={editingShutter.duration}
-                    onChange={(e) => setEditingShutter({...editingShutter, duration: e.target.value})}
+                    onChange={(e) => setEditingShutter({ ...editingShutter, duration: e.target.value })}
+                    className="w-full text-xs sm:text-sm h-8 sm:h-10"
                   />
                 ) : (
-                  shutterDurations[id] || '10'
+                  <span className="text-xs sm:text-base">{shutterDurations[id] || '10'}</span>
                 )}
-              </td>
-              <td>
-                <div className="d-flex gap-2">
-                  {isEditing && editingShutter?.id === id ? (
-                    <>
-                    <Button variant="default" size="sm" onClick={handleSaveEdit}>
-                      Save
+              </div>
+              <div className="col-span-4 md:col-span-3 flex justify-start gap-1 sm:gap-2 items-center">
+                {isEditing && editingShutter?.id === id ? (
+                  <>
+                    <Button variant="default" size="icon" onClick={handleSaveEdit}>
+                      <Save className="h-4 w-4" />
                     </Button>
-                    <Button variant="default" size="sm" onClick={cancelEditing}>
-                      Cancel
+                    <Button variant="default" size="icon" onClick={cancelEditing}>
+                      <X className="h-4 w-4" />
                     </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => startEditing(id)}>
-                        Edit
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => confirmDelete(id)}>
-                        Delete
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleShowProgram(id)}>
-                        Program
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => startEditing(id)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="destructive" size="icon" onClick={() => confirmDelete(id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Confirm Delete</DialogTitle>
+                        </DialogHeader>
+                          Are you sure you want to delete this shutter?
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="secondary">
+                              Cancel
+                            </Button>
+                          </DialogClose>
+                          <Button variant="destructive" onClick={handleDelete}>
+                            Delete
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleShowProgram(id)}>
+                          <Link className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Program Shutter</DialogTitle>
+                        </DialogHeader>
+                          Press the program button on the back of your remote control until your shutter makes a brief up and down movement.<br />
+                          Then click on "Finished".
+                        <DialogFooter>
+                          <DialogClose asChild>
+                          <Button variant="secondary">
+                            Cancel
+                          </Button>
+                          </DialogClose>
+                          <Button variant="default" onClick={() => handleFinishedProgram()}>
+                            Finished
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+              </div>
+            </div>
           ))}
-          
-          {/* Add new shutter row */
-          addingShutter && (
-          <tr>
-            <td>
-              <Form.Control
-                type="text"
-                placeholder="Shutter Name"
-                value={newShutter.name}
-                onChange={(e) => setNewShutter({...newShutter, name: e.target.value})}
-              />
-            </td>
-            <td>
-              <Form.Control
-                type="text"
-                placeholder="Duration in seconds"
-                value={newShutter.duration}
-                onChange={(e) => setNewShutter({...newShutter, duration: e.target.value})}
-              />
-            </td>
-            <td>
-              <Button variant="default" onClick={handleAddShutter}>
-                Save
-              </Button>
-              <Button variant="secondary" onClick={() => setAddingShutter(false)}>
-                Cancel
-              </Button>
-            </td>
-          </tr>
+
+          {addingShutter && (
+            <div className="grid grid-cols-12 p-2 border-t items-center gap-x-2">
+              <div className="col-span-6 md:col-span-7">
+                <Input
+                  type="text"
+                  placeholder="Shutter Name"
+                  value={newShutter.name}
+                  onChange={(e) => setNewShutter({ ...newShutter, name: e.target.value })}
+                  className="w-full text-xs sm:text-sm h-8 sm:h-10"
+                />
+              </div>
+              <div className="col-span-2">
+                <Input
+                  type="text"
+                  placeholder="Duration"
+                  value={newShutter.duration}
+                  onChange={(e) => setNewShutter({ ...newShutter, duration: e.target.value })}
+                  className="w-full text-xs sm:text-sm h-8 sm:h-10"
+                />
+              </div>
+              <div className="col-span-3 flex gap-2">
+                <Button variant="default" size="icon" onClick={handleAddShutter}>
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button variant="secondary" size="icon" onClick={() => setAddingShutter(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
-        </tbody>
-      </Table>
-      
-      {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteConfirm} onHide={() => setShowDeleteConfirm(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete this shutter?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
-      
-      {/* Program Modal */}
-      <Modal show={showProgramModal} onHide={() => setShowProgramModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Program Shutter</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Press the program button on the back of your remote control until your shutter makes a brief up and down movement.</p>
-          <p>Then click on "Finished".</p>
-        </Modal.Body>
-        <Modal.Footer>
-        <Button variant="secondary" onClick={() => setShowProgramModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="default" onClick={() => handleFinishedProgram()}>
-            Finished
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      </div>
     </div>
   );
 };
