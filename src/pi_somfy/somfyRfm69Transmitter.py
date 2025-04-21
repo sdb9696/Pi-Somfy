@@ -43,7 +43,6 @@ class SomfyRfm69Tx(object):
 
         self.piconnected = False
 
-        self.pi = gpio.pi(pigpiohost, pigpioport)
         self.RESETPIN = resetBcmPinNumber
         self.DATAPIN = dataBcmPinNumber
         self.pigpiohost = pigpiohost
@@ -51,17 +50,19 @@ class SomfyRfm69Tx(object):
         self.spichannel = spichannel
         self.spibaudrate = spibaudrate
 
-        if not self.pi.connected:
-            raise RuntimeError("Cannot connect to pigpiod, is the daemon running? (sudo pigpiod)")
-        self.piconnected = True
 
     def __enter__(self):
+        self.pi = gpio.pi(self.pigpiohost, self.pigpioport)
+        if not self.pi.connected:
+            raise RuntimeError("Cannot connect to pigpiod, is the daemon running? (sudo pigpiod)")
+        self.piconnected = True        
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """clean up stuff"""
         if self.piconnected:
             self.pi.stop()
+            self.piconnected = False             
 
     def _startTransmit(self):
         
@@ -76,7 +77,7 @@ class SomfyRfm69Tx(object):
         self.pi.write(self.RESETPIN, 0)
         sleep(.005)
 
-        with Rfm69(host=self.pigpiohost, channel=self.spichannel, baudrate=self.spibaudrate, debug_level=0) as rf:
+        with Rfm69(host=self.pigpiohost, channel=self.spichannel, baudrate=self.spibaudrate, debug_level=0, connected_pigpio=self.pi) as rf:
             # just to make sure SPI is working
             rx_data = rf.read_single(0x5A)
             if rx_data != 0x55:

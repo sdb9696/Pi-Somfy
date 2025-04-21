@@ -26,7 +26,7 @@ def SetupLogger(logger_name, log_file, level=logging.DEBUG, stream = False):
         # Dont format stream log messages
         logger.addHandler(streamHandler)
 
-
+    logger.propagate = False
     return logging.getLogger(logger_name)
 
 #------------ MyLog class -----------------------------------------------------

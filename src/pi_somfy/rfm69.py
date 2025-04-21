@@ -18,21 +18,30 @@ class Rfm69(object):
     """RFM69-Class"""
     # pylint: disable=too-many-instance-attributes, C0301, C0103
 
-    def __init__(self, host="localhost", port=8888, channel=0, baudrate=10000000, debug_level=0):
+    def __init__(self, host="localhost", port=8888, channel=0, baudrate=10000000, debug_level=0, *, connected_pigpio=None):
         # general variables
         self.debug_level = debug_level
 
         # RFM69-specific variables
-        self.pi = gpio.pi(host, port)
-        self.handle = self.pi.spi_open(channel, baudrate, 0)    # Flags: CPOL=0 and CPHA=0
+        self.host = host
+        self.port = port
+        self.channel = channel
+        self.baudrate = baudrate
+        self.connected_pigpio = connected_pigpio
+
+        self.pi = None
+        self.handle = None
 
     def __enter__(self):
+        self.pi = self.connected_pigpio or gpio.pi(self.host, self.port)
+        self.handle = self.pi.spi_open(self.channel, self.baudrate, 0)  # Flags: CPOL=0 and CPHA=0
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """clean up stuff"""
         self.pi.spi_close(self.handle)
-        self.pi.stop()
+        if self.connected_pigpio is None:
+            self.pi.stop()
 
     def debug(self, message, level=0):
         """Debug output depending on debug level."""

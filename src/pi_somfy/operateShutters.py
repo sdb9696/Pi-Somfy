@@ -261,7 +261,11 @@ class Shutter(MyLog):
 
             if not (self.config.Rfm69Enabled):
 
-                pi = pigpio.pi(host=self.config.PIGPIOHost, port=self.config.PIGPIOPort) 
+                start_time = time.time()
+                self.LogDebug(f"Connecting to PIGPIO")
+                pi = pigpio.pi(host=self.config.PIGPIOHost, port=self.config.PIGPIOPort)
+                end_time = time.time()
+                self.LogDebug(f"PIGPIO connection duration: {end_time - start_time:.3f} seconds")
 
                 if not pi.connected:
                     sys.exit(1)
