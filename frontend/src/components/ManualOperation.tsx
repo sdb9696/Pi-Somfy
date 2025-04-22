@@ -32,7 +32,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
 
   return (
     <div className="manual-operation">
-      <div className="shutter-grid">
+      <div className="shutter-grid flex flex-wrap justify-center gap-6">
         {Object.entries(shutters).length > 0 ? (
           Object.entries(shutters)
             // Sort by shutter name
@@ -40,12 +40,14 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
               return String(nameA || '').localeCompare(String(nameB || ''));
             })
             .map(([id, name]) => (
-              <div key={id} className="shutter-remote">
-                <div className="shutter-name">{name || 'Unnamed Shutter'}</div>
-                <div className="control-buttons">
+              <div key={id} className="shutter-remote flex flex-col bg-white rounded-3xl shadow-lg shadow-gray-400/50 p-4 border border-gray-200 w-[125px] pb-10">
+                <div className="shutter-name text-center font-medium mb-3 h-[50px] overflow-hidden">
+                  <div className="line-clamp-2 w-full pt-1">{name || 'Unnamed Shutter'}</div>
+                </div>
+                <div className="control-buttons flex flex-col gap-3 items-center">
                   <Button 
                     variant="ghost"
-                    className="p-0 relative" 
+                    className="p-0 relative rounded-md hover:bg-gray-100"
                     onClick={() => handleCommand(id, 'up')}
                     disabled={loading[id+'up'] === 'loading'}
                   >
@@ -58,7 +60,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                   </Button>
                   
                   <Button 
-                    className="p-0 relative" 
+                    className="p-0 relative rounded-md hover:bg-gray-100"
                     variant="ghost"
                     onClick={() => handleCommand(id, 'stop')}
                     disabled={loading[id+'stop'] === 'loading'}
@@ -72,7 +74,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                   </Button>
                   
                   <Button 
-                    className="p-0 relative" 
+                    className="p-0 relative rounded-md hover:bg-gray-100"
                     variant="ghost"
                     onClick={() => handleCommand(id, 'down')}
                     disabled={loading[id+'down'] === 'loading'}
