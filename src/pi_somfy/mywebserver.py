@@ -11,12 +11,7 @@ except Exception as e1:
 
 import sys, signal, os, socket, atexit, time, subprocess, threading, signal, errno, collections, traceback
 
-try:
-    from .mylog import MyLog
-except Exception as e1:
-    print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
-    print("Error: " + str(e1))
-    sys.exit(2)
+LOGGER = logging.getLogger(__name__)
 
 class EndpointAction():
 
@@ -32,14 +27,13 @@ class EndpointAction():
         return self.response
 
 
-class FlaskAppWrapper(threading.Thread,MyLog):
+class FlaskAppWrapper(threading.Thread):
     app = None
     CriticalLock = None
 
-    def __init__(self, name = __name__, static_url_path = '', log = None, shutter = None, schedule = None, config: MyConfig = None):
+    def __init__(self, name = __name__, static_url_path = '', shutter = None, schedule = None, config: MyConfig = None):
         threading.Thread.__init__(self, name="Web Server")
-        if log != None:
-            self.log = log
+
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
     
         self.shutter = shutter
@@ -72,27 +66,27 @@ class FlaskAppWrapper(threading.Thread,MyLog):
     def requestMain(self):
         if not self.validatePassword(header=False):
             return self.app.send_static_file("error.html")
-        self.LogDebug(request.url)
+        LOGGER.debug(request.url)
         return self.app.send_static_file('index.html')
         
     def processCommand(self, *args, **kwargs):
-        self.LogDebug(request.url + " ( "+ request.method + " ): "+ str(args) + " | "+ str(kwargs))
+        LOGGER.debug(request.url + " ( "+ request.method + " ): "+ str(args) + " | "+ str(kwargs))
         try:
-            # self.LogDebug(request.values.get('sitename', 0, type=str))
-            # self.LogDebug("JSON: "+str(request.get_json()))
-            # self.LogDebug("RAW: "+str(request.get_data()))
+            # LOGGER.debug(request.values.get('sitename', 0, type=str))
+            # LOGGER.debug("JSON: "+str(request.get_json()))
+            # LOGGER.debug("RAW: "+str(request.get_data()))
             command = args[1]['command']
             if command in ["up", "down", "stop", "program", "press", "getConfig", "addSchedule", "editSchedule", "deleteSchedule", "addShutter", "editShutter", "deleteShutter", "setLocation" ]:
-                self.LogInfo("processing Command \"" + command + "\" with parameters: "+str(request.values))
+                LOGGER.info("processing Command \"" + command + "\" with parameters: "+str(request.values))
                 result = getattr(self, command)(request.values)
                 return Response(json.dumps(result), status=200)
             else:
-                self.LogWarn("UNKNOWN COMMAND " + command)
+                LOGGER.warning("UNKNOWN COMMAND " + command)
                 return Response("Error: Unknown Command: " + command, status=400)
         except Exception as e1:
             tb = traceback.format_exc()
-            self.LogErrorLine("Error in Process Command: " + command + ": " + str(e1))
-            self.LogError(tb)
+            LOGGER.exception("Error in Process Command: " + command + ": " + str(e1))
+            LOGGER.error(tb)
             return Response("Error: Exception occured", status=400)
 
     def validatePassword(self, header=True):
@@ -108,8 +102,8 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             password = request.args.get("Password")
 
         if password != self.config.Password:
-            self.LogDebug("received invalid password")
-            self.LogDebug(password)
+            LOGGER.debug("received invalid password")
+            LOGGER.debug(password)
             return False
         return True
 
@@ -124,7 +118,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         if not self.validatePassword():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
-        self.LogDebug("rise shutter \""+shutter+"\"")
+        LOGGER.debug("rise shutter \""+shutter+"\"")
         if (not shutter in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.rise(shutter)
@@ -134,7 +128,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         if not self.validatePassword():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
-        self.LogDebug("lower shutter \""+shutter+"\"")
+        LOGGER.debug("lower shutter \""+shutter+"\"")
         if (not shutter in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.lower(shutter)
@@ -144,7 +138,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         if not self.validatePassword():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
-        self.LogDebug("stop shutter \""+shutter+"\"")
+        LOGGER.debug("stop shutter \""+shutter+"\"")
         if (not shutter in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.stop(shutter)
@@ -152,7 +146,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
 
     def program(self, params):
         shutter=params.get('shutter', 0, type=str)
-        self.LogDebug("program shutter \""+shutter+"\"")
+        LOGGER.debug("program shutter \""+shutter+"\"")
         if (not shutter in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.program(shutter)
@@ -162,14 +156,14 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         shutter=params.get('shutter', 0, type=str)
         buttons = params.get('buttons', 0, type=int)
         longPress = params.get('longPress', 0, type=str) == "true"
-        self.LogDebug(("long" if longPress else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
+        LOGGER.debug(("long" if longPress else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
         if (not shutter in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.pressButtons(shutter, buttons, longPress)
         return {'status': 'OK'}
 
     def setLocation(self, params):
-        self.LogDebug("set Location: "+params.get('lat', 0, type=str)+" / "+params.get('lng', 0, type=str))
+        LOGGER.debug("set Location: "+params.get('lat', 0, type=str)+" / "+params.get('lng', 0, type=str))
         self.config.setLocation(params.get('lat', 0, type=str), params.get('lng', 0, type=str))
         self.schedule.setUpdateTime()
         return {'status': 'OK'}
@@ -184,7 +178,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         else: 
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
-        self.LogDebug("add shutter: "+ name)
+        LOGGER.debug("add shutter: "+ name)
         if (name in self.config.ShuttersByName):
             return {'status': 'ERROR', 'message': 'Name is not unique'}
         elif ("," in name):
@@ -194,7 +188,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         else:
             self.config.addShutter(name, duration)
             id = self.config.ShuttersByName[name]
-            self.LogDebug("got a new shutter id: "+str(id))
+            LOGGER.debug("got a new shutter id: "+str(id))
             return {'status': 'OK', 'id': str(id)}
 
     def editShutter(self, params):
@@ -208,7 +202,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         else:
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
-        self.LogDebug("edit shutter: "+id+" / "+name)
+        LOGGER.debug("edit shutter: "+id+" / "+name)
         if (not id in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         elif ((name == self.config.Shutters[id]['name']) and (duration == self.config.Shutters[id]['durationDown'])):
@@ -226,7 +220,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
 
     def deleteShutter(self, params):
         id = params.get('id', 0, type=str)
-        self.LogDebug("delete shutter: "+id)
+        LOGGER.debug("delete shutter: "+id)
         if (not id in self.config.Shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         else:
@@ -242,7 +236,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         except ValueError as e:
             return {'status': 'ERROR', 'message': str(e)}
 
-        self.LogDebug("create new schedule")
+        LOGGER.debug("create new schedule")
         return self.schedule.addSchedule(
             active,
             repeatType,
@@ -266,7 +260,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         except ValueError as e:
             return {'status': 'ERROR', 'message': str(e)}
 
-        self.LogDebug("change schedule: "+id)
+        LOGGER.debug("change schedule: "+id)
         return self.schedule.editSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
 
     def _get_schedule_params(self, params):
@@ -282,7 +276,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
     
     def deleteSchedule(self, params):
         id = params.get('id', 0, type=str)
-        self.LogDebug("delete schedule: "+id)
+        LOGGER.debug("delete schedule: "+id)
         return self.schedule.deleteSchedule(id);
 
     def getConfig(self, params):
@@ -292,7 +286,7 @@ class FlaskAppWrapper(threading.Thread,MyLog):
             shutters[k] = self.config.Shutters[k]['name']  
             durations[k] = self.config.Shutters[k]['durationDown']            
         obj = {'Latitude': self.config.Latitude, 'Longitude': self.config.Longitude, 'Shutters': shutters, 'ShutterDurations': durations, 'Schedule': self.schedule.getScheduleAsDict()}
-        self.LogDebug("getConfig called, sending: "+json.dumps(obj))
+        LOGGER.debug("getConfig called, sending: "+json.dumps(obj))
         return obj
 
     def generate_adhoc_ssl_context(self):
@@ -340,12 +334,12 @@ class FlaskAppWrapper(threading.Thread,MyLog):
         if self.config.UseHttps:
             import ssl
             from OpenSSL import crypto
-            self.LogInfo("Starting secure WebServer on Port "+str(self.config.HTTPSPort))
+            LOGGER.info("Starting secure WebServer on Port "+str(self.config.HTTPSPort))
             self.app.run(host="0.0.0.0", port=self.config.HTTPSPort, threaded = True, ssl_context=self.generate_adhoc_ssl_context(), use_reloader = False, debug = False)
         else:
-            self.LogInfo("Starting WebServer on Port "+str(self.config.HTTPPort))
+            LOGGER.info("Starting WebServer on Port "+str(self.config.HTTPPort))
             self.app.run(host="0.0.0.0", threaded = True, port=self.config.HTTPPort, use_reloader = False, debug = False)
-        self.LogInfo("Stopping WebServer")
+        LOGGER.info("Stopping WebServer")
 
 
 

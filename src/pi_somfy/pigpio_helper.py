@@ -1,6 +1,9 @@
 import pigpio
 import threading
 import os
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 def create_pigpio_connection(
         pigpiohost = os.getenv("PIGPIO_ADDR", 'localhost'),

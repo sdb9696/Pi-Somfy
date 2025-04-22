@@ -18,7 +18,7 @@ the following files are needed:
 """
 
 import sys
-
+import logging
 from time import sleep
 import pigpio as gpio
 from .rfm69 import Rfm69
@@ -27,6 +27,8 @@ from .somfyRtsWaveForm import createWaveForm
 from .pigpio_helper import create_pigpio_connection
 import threading
 import time
+
+LOGGER = logging.getLogger(__name__)
 
 # define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
 RESETPINDEFAULT = 25

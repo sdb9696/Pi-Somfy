@@ -1,7 +1,9 @@
-
 import pigpio
+import logging
 
-def createWaveForm(txBcmPinNum, teleco, button, code, repetition, logger = None):
+LOGGER = logging.getLogger(__name__)
+
+def createWaveForm(txBcmPinNum, teleco, button, code, repetition):
 
     checksum = 0
 
@@ -19,10 +21,8 @@ def createWaveForm(txBcmPinNum, teleco, button, code, repetition, logger = None)
     outstring = "Frame  :    "
     for octet in frame:
         outstring = outstring + "0x%0.2X" % octet + ' '
-    if logger == None:
-        print(outstring)
-    else:
-        logger.info (outstring)
+    
+    LOGGER.info (outstring)
 
     for i in range(0, 7):
         checksum = checksum ^ frame[i] ^ (frame[i] >> 4)
@@ -34,11 +34,8 @@ def createWaveForm(txBcmPinNum, teleco, button, code, repetition, logger = None)
     outstring = "With cks  : "
     for octet in frame:
         outstring = outstring + "0x%0.2X" % octet + ' '
-    if logger == None:
-        print(outstring)
-    else:
-        logger.info (outstring)
-
+    
+    LOGGER.info (outstring)
 
     for i in range(1, 7):
         frame[i] ^= frame[i-1];
@@ -46,10 +43,8 @@ def createWaveForm(txBcmPinNum, teleco, button, code, repetition, logger = None)
     outstring = "Obfuscated :"
     for octet in frame:
         outstring = outstring + "0x%0.2X" % octet + ' '
-    if logger == None:
-        print(outstring)
-    else:
-        logger.info (outstring)
+
+    LOGGER.info (outstring)
 
 
     #This is where all the awesomeness is happening. You're telling the daemon what you wanna send

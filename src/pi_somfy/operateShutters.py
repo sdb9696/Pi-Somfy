@@ -24,8 +24,6 @@ from pathlib import Path
 
 try:
     from .myconfig import MyConfig
-    from .mylog import SetupLogger
-    from .mylog import MyLog
     from .myscheduler import Event
     from .myscheduler import Schedule
     from .myscheduler import Scheduler
@@ -75,7 +73,7 @@ class Args:
         self.echo = echo
         self.mqtt = mqtt
         
-class Shutter(MyLog):
+class Shutter:
     #Button values
     buttonUp = 0x2
     buttonStop = 0x1
@@ -95,11 +93,10 @@ class Shutter(MyLog):
             self.lastCommandDirection = commandDirection
             self.lastCommandTime = time.monotonic()
 
-    def __init__(self, log = None, config = None):
+    def __init__(self, config = None):
         super().__init__()
         self.lock = threading.Lock()
-        if log != None:
-            self.log = log
+
         if config != None:
             self.config = config
 
@@ -133,20 +130,20 @@ class Shutter(MyLog):
         state = self.getShutterState(shutterId)
         oldLastCommandTime = state.lastCommandTime
 
-        self.LogDebug("["+self.config.Shutters[shutterId]['name']+"] Waiting for operation to complete for " + str(timeToWait) + " seconds")
+        LOGGER.debug("["+self.config.Shutters[shutterId]['name']+"] Waiting for operation to complete for " + str(timeToWait) + " seconds")
         time.sleep(timeToWait)
 
         # Only set new position if registerCommand has not been called in between
         if state.lastCommandTime == oldLastCommandTime:
-            self.LogDebug("["+self.config.Shutters[shutterId]['name']+"] Set new final position: " + str(newPosition))
+            LOGGER.debug("["+self.config.Shutters[shutterId]['name']+"] Set new final position: " + str(newPosition))
             self.setPosition(shutterId, newPosition)
         else:
-            self.LogDebug("["+self.config.Shutters[shutterId]['name']+"] Discard final position. Position is now: " + str(state.position))
+            LOGGER.debug("["+self.config.Shutters[shutterId]['name']+"] Discard final position. Position is now: " + str(state.position))
 
     def lower(self, shutterId):
         state = self.getShutterState(shutterId, 100)
 
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Going down")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Going down")
         self.sendCommand(shutterId, self.buttonDown, self.config.SendRepeat)
         state.registerCommand('down')
 
@@ -158,11 +155,11 @@ class Shutter(MyLog):
     def lowerPartial(self, shutterId, percentage):
         state = self.getShutterState(shutterId, 100)
 
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Going down") 
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Going down") 
         self.sendCommand(shutterId, self.buttonDown, self.config.SendRepeat)
         state.registerCommand('down')
         time.sleep((state.position-percentage)/100*self.config.Shutters[shutterId]['durationDown'])
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Stop at partial position requested")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Stop at partial position requested")
         self.sendCommand(shutterId, self.buttonStop, self.config.SendRepeat)
 
         self.setPosition(shutterId, percentage)
@@ -170,7 +167,7 @@ class Shutter(MyLog):
     def rise(self, shutterId):
         state = self.getShutterState(shutterId, 0)
 
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Going up")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Going up")
         self.sendCommand(shutterId, self.buttonUp, self.config.SendRepeat)
         state.registerCommand('up')
 
@@ -182,11 +179,11 @@ class Shutter(MyLog):
     def risePartial(self, shutterId, percentage):
         state = self.getShutterState(shutterId, 0)
 
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Going up")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Going up")
         self.sendCommand(shutterId, self.buttonUp, self.config.SendRepeat)
         state.registerCommand('up')
         time.sleep((percentage-state.position)/100*self.config.Shutters[shutterId]['durationUp'])
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Stop at partial position requested")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Stop at partial position requested")
         self.sendCommand(shutterId, self.buttonStop, self.config.SendRepeat)
 
         self.setPosition(shutterId, percentage)
@@ -194,12 +191,12 @@ class Shutter(MyLog):
     def stop(self, shutterId):
         state = self.getShutterState(shutterId, 50)
 
-        self.LogInfo("["+self.config.Shutters[shutterId]['name']+"] Stopping")
+        LOGGER.info("["+self.config.Shutters[shutterId]['name']+"] Stopping")
         self.sendCommand(shutterId, self.buttonStop, self.config.SendRepeat)
 
-        self.LogDebug("["+shutterId+"] Previous position: " + str(state.position))
+        LOGGER.debug("["+shutterId+"] Previous position: " + str(state.position))
         secondsSinceLastCommand = int(round(time.monotonic() - state.lastCommandTime))
-        self.LogDebug("["+shutterId+"] Seconds since last command: " + str(secondsSinceLastCommand))
+        LOGGER.debug("["+shutterId+"] Seconds since last command: " + str(secondsSinceLastCommand))
 
         # Compute position based on time elapsed since last command & command direction
         setupDurationDown = self.config.Shutters[shutterId]['durationDown']
@@ -209,36 +206,36 @@ class Shutter(MyLog):
         if state.lastCommandDirection == 'up':
             if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationUp:
                 durationPercentage = int(round(secondsSinceLastCommand/setupDurationUp * 100))
-                self.LogDebug("["+shutterId+"] Up duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
+                LOGGER.debug("["+shutterId+"] Up duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
                 if state.position > 0: # after rise from previous position
                     newPosition = min (100 , state.position + durationPercentage)
                 else: # after rise from fully closed
                     newPosition = durationPercentage
             else:  #fallback
-                self.LogWarn("["+shutterId+"] Too much time since up command.")
+                LOGGER.warning("["+shutterId+"] Too much time since up command.")
                 fallback = True
         elif state.lastCommandDirection == 'down':
             if secondsSinceLastCommand > 0 and secondsSinceLastCommand < setupDurationDown:
                 durationPercentage = int(round(secondsSinceLastCommand/setupDurationDown * 100))
-                self.LogDebug("["+shutterId+"] Down duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
+                LOGGER.debug("["+shutterId+"] Down duration percentage: " + str(durationPercentage) + ", State position: "+ str(state.position))
                 if state.position < 100: # after lower from previous position
                     newPosition = max (0 , state.position - durationPercentage)
                 else: # after down from fully opened
                     newPosition = 100 - durationPercentage
             else:  #fallback
-                self.LogWarn("["+shutterId+"] Too much time since down command.")
+                LOGGER.warning("["+shutterId+"] Too much time since down command.")
                 fallback = True
         else: # consecutive stops
-            self.LogWarn("["+shutterId+"] Stop pressed while stationary.")
+            LOGGER.warning("["+shutterId+"] Stop pressed while stationary.")
             fallback = True
 
         if fallback == True: # Let's assume it will end on the intermediate position ! If it exists !
             intermediatePosition = self.config.Shutters[shutterId]['intermediatePosition']
             if (intermediatePosition == None) or (intermediatePosition == state.position):
-                self.LogInfo("["+shutterId+"] Stay stationary.")
+                LOGGER.info("["+shutterId+"] Stay stationary.")
                 newPosition = state.position
             else:
-                self.LogInfo("["+shutterId+"] Motor expected to move to intermediate position "+str(intermediatePosition))
+                LOGGER.info("["+shutterId+"] Motor expected to move to intermediate position "+str(intermediatePosition))
                 if state.position > intermediatePosition:
                     state.registerCommand('down')
                     timeToWait = abs(state.position - intermediatePosition) / 100*self.config.Shutters[shutterId]['durationDown']
@@ -272,11 +269,11 @@ class Shutter(MyLog):
     # frame and more repetitions moves the blinds up/down for a longer time.
     # To activate the program mode (to register or de-register additional remotes) of your Somfy blinds, long press the 
     # prog button (at least thirteen times after the original frame to activate the registration.
-        self.LogDebug("sendCommand: Waiting for Lock")
+        LOGGER.debug("sendCommand: Waiting for Lock")
         self.lock.acquire()
         try:
             
-            self.LogDebug("sendCommand: Lock aquired")
+            LOGGER.debug("sendCommand: Lock aquired")
             checksum = 0
 
             teleco = int(shutterId, 16)
@@ -285,20 +282,20 @@ class Shutter(MyLog):
             # print (codecs.encode(shutterId, 'hex_codec'))
             self.config.setShutterCode(shutterId, code+1)
 
-            self.LogInfo(f"Remote  :       0x{teleco:02X} ({self.config.Shutters[shutterId]['name']})")
-            self.LogInfo(f"Button  :       0x{button:02X}")
-            self.LogInfo(f"Rolling code : {code}")
-            self.LogInfo("")
+            LOGGER.info(f"Remote  :       0x{teleco:02X} ({self.config.Shutters[shutterId]['name']})")
+            LOGGER.info(f"Button  :       0x{button:02X}")
+            LOGGER.info(f"Rolling code : {code}")
+            LOGGER.info("")
 
-            wf = createWaveForm(self.TXGPIO, teleco, button, code, repetition, self.log)
+            wf = createWaveForm(self.TXGPIO, teleco, button, code, repetition)
 
             if not (self.config.Rfm69Enabled):
 
                 start_time = time.time()
-                self.LogDebug(f"Connecting to PIGPIO")
+                LOGGER.debug(f"Connecting to PIGPIO")
                 pi = create_pigpio_connection(self.config.PIGPIOHost, self.config.PIGPIOPort, timeout=self.config.PIGPIO_Connect_Timeout)
                 end_time = time.time()
-                self.LogDebug(f"PIGPIO connection duration: {end_time - start_time:.3f} seconds")
+                LOGGER.debug(f"PIGPIO connection duration: {end_time - start_time:.3f} seconds")
 
                 if not pi.connected:
                     sys.exit(1)
@@ -325,55 +322,46 @@ class Shutter(MyLog):
 
         finally:
             self.lock.release()
-            self.LogDebug("sendCommand: Lock released")
+            LOGGER.debug("sendCommand: Lock released")
 
     
 
 
-class operateShutters(MyLog):
+class operateShutters:
 
     def __init__(self, config: MyConfig, args: Args = None):
-        super().__init__()
-
-        LOGGER.debug("Logging with new logger")
-
-        self.ProgramName = "operate Somfy Shutters"
-        self.Version = "Unknown"
-        self.log = None
-        self.IsStopping = False
-        self.ProgramComplete = False
-
-        self.console = SetupLogger("shutters_console", log_file = "", stream = True)
-
-        if os.geteuid() != 0:
-            self.LogConsole("You are not running as sudo, you will need to ensure you have appropriate permissions for your config (i.e. ports less than 1024) or run this script as sudo")
-
         # read config file
         self.config = config
 
-        # log errors in this module to a file
-        self.log = SetupLogger("shutters", self.config.LogLocation + "operateShutters-" + getpass.getuser() + ".log", stream=self.config.LogToConsole)
-        self.config.log = self.log
+        self.ProgramName = "operate Somfy Shutters"
+        self.Version = "Unknown"
+        self.IsStopping = False
+        self.ProgramComplete = False
+
+        if os.geteuid() != 0 and self.config.HTTPPort < 1024:
+            LOGGER.info("You are not running as sudo, you will need to ensure you have appropriate permissions for your config (i.e. ports less than 1024) or run this script as sudo")
 
         if self.IsLoaded():
-            self.LogWarn("operateShutters.py is already loaded.")
+            LOGGER.warning("operateShutters.py is already loaded.")
             sys.exit(1)
 
-        self.shutter = Shutter(log = self.log, config = self.config)
+
+        self.shutter = Shutter(config = self.config)
 
         # atexit.register(self.Close)
         # signal.signal(signal.SIGTERM, self.Close)
         # signal.signal(signal.SIGINT, self.Close)
 
-        self.schedule = Schedule(log = self.log, config = self.config)
+        self.schedule = Schedule(config = self.config)
         self.scheduler = None
         self.webServer = None
+        self.pigpio_checked = False
 
         if (args.echo == True):
-            self.alexa = Alexa(kwargs={'log':self.log, 'shutter': self.shutter, 'config': self.config})
+            self.alexa = Alexa(kwargs={'shutter': self.shutter, 'config': self.config})
 
         if (args.mqtt == True):
-            self.mqtt = MQTT(kwargs={'log':self.log, 'shutter': self.shutter, 'config': self.config})
+            self.mqtt = MQTT(kwargs={'shutter': self.shutter, 'config': self.config})
 
         self.ProcessCommand(args);
 
@@ -397,10 +385,67 @@ class operateShutters(MyLog):
         except OSError as err:
             return True
 
+    #--------------------- operateShutters::startPIGPIO ------------------------------
+
+    def checkPIGPIO(self):
+        """Check if pigpiod is running and start it if it is not."""
+        connected = False
+        try:
+            pi = create_pigpio_connection(self.config.PIGPIOHost, self.config.PIGPIOPort, timeout=self.config.PIGPIO_Connect_Timeout)
+            connected = pi.connected
+            if connected:
+                pi.stop()
+        except TimeoutError as e:
+            LOGGER.error("Could not connect to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
+        except Exception as e:
+            LOGGER.exception("Could not connect to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
+
+        if connected:
+            LOGGER.info("Successfully connected to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
+            return
+        
+        if self.config.PIGPIOHost != 'localhost':
+            LOGGER.warning("Cannot connect to pigpiod on %s:%s, pigpiod is not running on localhost, skipping local start", self.config.PIGPIOHost, self.config.PIGPIOPort)
+            return
+
+        status, process = subprocess.getstatusoutput('pidof pigpiod')
+        if status:  #  it wasn't running, so start it
+            
+            if os.geteuid() == 0:
+                LOGGER.info("pigpiod was not running, trying to start it")
+                subprocess.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
+                time.sleep(0.5)
+                # check it again
+                status, process = subprocess.getstatusoutput('pidof pigpiod')
+            else:
+                LOGGER.warning("pigpiod was not running and you are not running as sudo, try to start it from a command prompt with the following command: sudo pigpiod -l -m")
+                return
+
+        if not status:  # if it was started successfully (or was already running)...
+            pigpiod_process = process
+            LOGGER.info("pigpiod has been started, process ID is {} ".format(pigpiod_process))
+
+            try:
+                pi = create_pigpio_connection(self.config.PIGPIOHost, self.config.PIGPIOPort, timeout=self.config.PIGPIO_Connect_Timeout)
+                if not pi.connected:
+                    LOGGER.error("pigpio connection could not be established. Check logs to get more details.")
+                    return False
+                else:
+                    LOGGER.info("pigpio's connection test succesful.")
+                    pi.stop()
+            except Exception as e:
+                LOGGER.exception("problem connecting to local pigpio")
+        else:
+            LOGGER.error("Local start of pigpiod was unsuccessful.")
 
     #--------------------- operateShutters::ProcessCommand -----------------------------------------------
     def ProcessCommand(self, args):
         """Process command-line arguments to control shutters or start services."""
+        # Check if pigpiod is running
+        if not self.pigpio_checked:
+            self.checkPIGPIO()
+            self.pigpio_checked = True
+
         # Validate long press option
         if args.long and not args.press:
             raise click.UsageError("The --long option requires the -press option.")
@@ -439,10 +484,10 @@ class operateShutters(MyLog):
 
     def _run_demo(self, shutter_id):
         """Run a demo sequence for the shutter."""
-        self.LogInfo("Lowering shutter for 7 seconds")
+        LOGGER.info("Lowering shutter for 7 seconds")
         self.shutter.lowerPartial(shutter_id, 7)
         time.sleep(7)
-        self.LogInfo("Raising shutter for 7 seconds")
+        LOGGER.info("Raising shutter for 7 seconds")
         self.shutter.risePartial(shutter_id, 7)
 
     def _schedule_dusk_dawn(self, args, shutter_id, dusk_dawn_offsets):
@@ -470,7 +515,6 @@ class operateShutters(MyLog):
     def _start_scheduler(self):
         """Initialize and start the scheduler."""
         self.scheduler = Scheduler(kwargs={
-            'log': self.log,
             'schedule': self.schedule,
             'shutter': self.shutter,
             'config': self.config
@@ -495,7 +539,6 @@ class operateShutters(MyLog):
         self.webServer = FlaskAppWrapper(
             name='WebServer',
             static_url_path=Path(__file__).parent.parent.parent / 'html',
-            log=self.log,
             shutter=self.shutter,
             schedule=self.schedule,
             config=self.config
@@ -511,31 +554,31 @@ class operateShutters(MyLog):
         try:
             self.IsStopping = True
         except Exception as e1:
-            self.LogErrorLine("Error Closing Monitor: " + str(e1))
+            LOGGER.exception("Error Closing Monitor: " + str(e1))
 
-        self.LogError("operateShutters Shutdown")
+        LOGGER.error("operateShutters Shutdown")
 
         try:
             self.ProgramComplete = True
             if (not self.scheduler == None):
-                self.LogError("Stopping Scheduler. This can take up to 1 second...")
+                LOGGER.error("Stopping Scheduler. This can take up to 1 second...")
                 self.scheduler.shutdown_flag.set()
                 self.scheduler.join()
-                self.LogError("Scheduler stopped. Now exiting.")
+                LOGGER.error("Scheduler stopped. Now exiting.")
             if (not self.alexa == None):
-                self.LogError("Stopping Alexa Listener. This can take up to 1 second...")
+                LOGGER.error("Stopping Alexa Listener. This can take up to 1 second...")
                 self.alexa.shutdown_flag.set()
                 self.alexa.join()
-                self.LogError("Alexa Listener stopped. Now exiting.")
+                LOGGER.error("Alexa Listener stopped. Now exiting.")
             if (not self.mqtt == None):
-                self.LogError("Stopping MQTT Listener. This can take up to 1 second...")
+                LOGGER.error("Stopping MQTT Listener. This can take up to 1 second...")
                 self.mqtt.shutdown_flag.set()
                 self.mqtt.join()
-                self.LogError("MQTT Listener stopped. Now exiting.")
+                LOGGER.error("MQTT Listener stopped. Now exiting.")
             if (not self.webServer == None):
-                self.LogError("Stopping WebServer. This can take up to 1 second...")
+                LOGGER.error("Stopping WebServer. This can take up to 1 second...")
                 self.webServer.shutdown_server()
-                self.LogError("WebServer stopped. Now exiting.")
+                LOGGER.error("WebServer stopped. Now exiting.")
             sys.exit(0)
         except:
             pass

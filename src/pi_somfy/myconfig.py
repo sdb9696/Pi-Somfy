@@ -11,8 +11,7 @@ try:
 except ImportError:
     from configparser import RawConfigParser
 
-from .mylog import MyLog
-
+LOGGER = logging.getLogger(__name__)
 
 GENERAL_PARAMETERS = {
     'LogLocation': str, 
@@ -126,22 +125,20 @@ CONFIG_COMMENTS = {
 
 
 
-class MyConfig(MyLog):
+class MyConfig:
     """Configuration manager for Pi-Somfy system.
 
     Handles loading and saving configuration data using TOML for general/MQTT
     settings and JSON for shutters/scheduler settings.
     """
-    def __init__(self, filename: str = None, section: str = None, log=None):
+    def __init__(self, filename: str = None, section: str = None):
         """Initialize configuration manager.
 
         Args:
             filename: Path to configuration file
             section: Initial section to work with
-            log: Logger instance
         """
         super().__init__()
-        self.log = log
         self.filepath = Path(filename)
         self.CriticalLock = threading.Lock()
         self.InitComplete = False
@@ -203,7 +200,7 @@ class MyConfig(MyLog):
                         val = self.ReadValue(config, section, key, return_type=type)
                         setattr(self, key, val)
                 except Exception as e1:
-                    self.LogErrorLine(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
+                    LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
                     return False
 
  
@@ -235,7 +232,7 @@ class MyConfig(MyLog):
                    self.Shutters[key] = {'name': name, 'active': True, 'code': param2, 'durationDown': int(down_duration), 'durationUp': int(up_duration), 'intermediatePosition': intermediate_pos}
                    self.ShuttersByName[name] = key
             except Exception as e1:
-                self.LogErrorLine("Missing config file or config file entries in Section Shutters for key "+key+": " + str(e1))
+                LOGGER.exception("Missing config file or config file entries in Section Shutters for key "+key+": " + str(e1))
                 return False
 
         schedules = config.items("Scheduler");
@@ -245,7 +242,7 @@ class MyConfig(MyLog):
                 if param[0].strip().lower() in ('active', 'paused'):
                    self.Schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2].split("|"), 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
             except Exception as e1:
-                self.LogErrorLine("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
+                LOGGER.exception("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
                 return False
     
         return True
@@ -264,7 +261,7 @@ class MyConfig(MyLog):
 
     def _migrate_from_ini(self):
         """Migrate configuration from old INI format to new TOML/JSON format."""
-        self.LogInfo("Migrating old INI configuration to new TOML/JSON format")
+        LOGGER.info("Migrating old INI configuration to new TOML/JSON format")
 
         self._load_legacy_config(self.old_ini_path)
 
@@ -283,7 +280,7 @@ class MyConfig(MyLog):
             with open(self.json_path, 'w') as f:
                 json.dump(shutters_schedule_dump, f, indent=2)
 
-        self.LogInfo("Migrated old INI configuration to new TOML/JSON format")
+        LOGGER.info("Migrated old INI configuration to new TOML/JSON format")
 
     def _create_new_toml(self):
         """Create new TOML file."""
@@ -318,7 +315,7 @@ class MyConfig(MyLog):
                     if val := toml[section].get(key):
                         setattr(self, key, val)
                 except Exception as e1:
-                    self.LogErrorLine(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
+                    LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
                     return False
 
         # Load Shutters from JSON
@@ -344,7 +341,7 @@ class MyConfig(MyLog):
                 self._load_new_format()
             return True
         except Exception as e:
-            self.LogErrorLine(f"Error loading config: {str(e)}")
+            LOGGER.exception(f"Error loading config: {str(e)}")
             return False
                                    
     def setLocation(self, lat: float, lng: float):

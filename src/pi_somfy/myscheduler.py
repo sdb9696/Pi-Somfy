@@ -14,8 +14,9 @@ import signal, atexit, subprocess, traceback
 import logging, logging.handlers
 import threading
 
+LOGGER = logging.getLogger(__name__)
+
 try:
-    from .mylog import MyLog
     from .myconfig import MyConfig
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
@@ -54,7 +55,7 @@ class Event:
 
         if (timeType == "clock") and not time.strptime(timeValue, '%H:%M'):
             raise ValueError("%s is not a valid value for TIMEVALUE (clock)." % timeValue )
-        astro_parts = re.split('\+|\-', timeValue)
+        astro_parts = re.split(r'\+|\-', timeValue)
         if (timeType == "astro") and not ((astro_parts[0] in ('sunset', 'sunrise')) and ((len(astro_parts) == 1) or (astro_parts[1] == None or int(astro_parts[1])))):
             raise ValueError("%s is not a valid value for TIMEVALUE (astro)." % timeValue)
         self.timeValue = timeValue
@@ -77,12 +78,10 @@ class Event:
         
         return outstr
            
-class Schedule(MyLog):
-    def __init__(self, log = None, config: MyConfig = None):
+class Schedule:
+    def __init__(self, config: MyConfig = None):
         super(Schedule, self).__init__()
         self.lock = threading.Lock()
-        if log != None:
-            self.log = log
         self.config = config
 
         self.schedule = {}
@@ -90,17 +89,17 @@ class Schedule(MyLog):
         
     def addEvent(self, id, evt):
         if id in self.schedule.items():
-            self.LogError("Event ID is not unique: "+ str(id))
+            LOGGER.error("Event ID is not unique: "+ str(id))
             
-        self.LogDebug('addEvent: Waiting for Lock')
+        LOGGER.debug('addEvent: Waiting for Lock')
         self.lock.acquire()
         try:
-            self.LogDebug('addEvent: Lock aquired')
+            LOGGER.debug('addEvent: Lock aquired')
             self.schedule[id] = evt
             self.setUpdateTime()
         finally:
             self.lock.release()
-            self.LogDebug('addEvent: Lock released')
+            LOGGER.debug('addEvent: Lock released')
             
     def getNewId(self):
         ids = []
@@ -115,7 +114,7 @@ class Schedule(MyLog):
             evt = Event('active', 'once', datetime.datetime.today().strftime('%Y/%m/%d'), "clock", str(hour)+":"+str(minute), shutterAction, shutterIds)
             self.addEvent(self.getNewId(), evt)
         except ValueError as ex:
-            self.LogError("Failed to add event: "+ str(ex))
+            LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
     def addRepeatEventByTime(self, shutterIds, shutterAction, hour, minute, weekdays):
@@ -123,7 +122,7 @@ class Schedule(MyLog):
             evt = Event('active', 'weekday', weekdays, "clock", str(hour)+":"+str(minute), shutterAction, shutterIds)
             self.addEvent(self.getNewId(), evt)
         except ValueError as ex:
-            self.LogError("Failed to add event: "+ str(ex))
+            LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
     def addRepeatEventBySunrise(self, shutterIds, shutterAction, delay, weekdays):
@@ -136,7 +135,7 @@ class Schedule(MyLog):
             evt = Event('active', 'weekday', weekdays, "astro", timeValue, shutterAction, shutterIds)
             self.addEvent(self.getNewId(), evt)
         except ValueError as ex:
-            self.LogError("Failed to add event: "+ str(ex))
+            LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
     def addRepeatEventBySunset(self, shutterIds, shutterAction, delay, weekdays):
@@ -149,13 +148,13 @@ class Schedule(MyLog):
             evt = Event('active', 'weekday', weekdays, "astro", timeValue, shutterAction, shutterIds)
             self.addEvent(self.getNewId(), evt)
         except ValueError as ex:
-            self.LogError("Failed to add event: "+ str(ex))
+            LOGGER.error("Failed to add event: "+ str(ex))
             pass
             
     def loadScheudleFromConfig(self):
-        self.LogDebug("Loading Schedule from Config File")
+        LOGGER.debug("Loading Schedule from Config File")
         for id, data in self.config.Schedule.items():
-            self.LogDebug("Loading Scheudle "+str(id))
+            LOGGER.debug("Loading Schedule "+str(id))
             repeatValue = data['repeatValue']
             evt =  Event(data['active'],data['repeatType'],repeatValue,data['timeType'],data['timeValue'],data['shutterAction'],data['shutterIds'])
             self.addEvent(id, evt)
@@ -232,7 +231,7 @@ class Schedule(MyLog):
         return self.updateTime
         
 
-class Scheduler(threading.Thread, MyLog):
+class Scheduler(threading.Thread):
 
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="Scheduler")
@@ -240,8 +239,6 @@ class Scheduler(threading.Thread, MyLog):
         
         self.args = args
         self.kwargs = kwargs
-        if kwargs["log"] != None:
-            self.log = kwargs["log"]
         self.schedule = kwargs["schedule"]
         self.shutter = kwargs["shutter"]
         self.config = kwargs["config"]
@@ -263,7 +260,7 @@ class Scheduler(threading.Thread, MyLog):
         sunset = ephem.localtime(self.homeLocation.next_setting(ephem.Sun()))
         weekday = weekDays[datetime.datetime.today().weekday()]
         date    = datetime.datetime.today().strftime('%Y/%m/%d')
-        self.LogInfo("Today is "+date+", a "+weekday+", Sunrise is at "+str(sunrise.time())+" and Sunset is at "+ str(sunset.time()));
+        LOGGER.info("Today is "+date+", a "+weekday+", Sunrise is at "+str(sunrise.time())+" and Sunset is at "+ str(sunset.time()));
 
         self.currentSchedule = {}
         for id, event in self.schedule.getSchedule().items():
@@ -280,7 +277,7 @@ class Scheduler(threading.Thread, MyLog):
                     if not eventTimeStr in self.currentSchedule:
                         self.currentSchedule[eventTimeStr] = []
                     self.currentSchedule[eventTimeStr].append([event.shutterIds, event.shutterAction])  
-        self.LogDebug(str(self.currentSchedule))
+        LOGGER.debug("Current schedule: %s", self.currentSchedule)
     
     def run(self):
         # self.schedule.printSchedule()
@@ -300,7 +297,7 @@ class Scheduler(threading.Thread, MyLog):
                     for eventDetail in eventDetails:
                         for shutterId in eventDetail[0]:
                             try:
-                                self.LogInfo("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" at " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+                                LOGGER.info("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" at " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
                                 if (eventDetail[1].startswith("up")):
                                     s = eventDetail[1][2:].strip()
                                     s1 = int(s) if s else -1
@@ -308,7 +305,7 @@ class Scheduler(threading.Thread, MyLog):
                                         if (self.shutter.getPosition(shutterId) < s1):   #Is Shutter below requested Position?
                                             self.shutter.risePartial(shutterId, s1)
                                         else:
-                                            self.LogWarn("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or above requested position")                                      
+                                            LOGGER.warning("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or above requested position")                                      
                                     else :  
                                         for i in range(self.config.SendRepeat):
                                             self.shutter.rise(shutterId)
@@ -320,7 +317,7 @@ class Scheduler(threading.Thread, MyLog):
                                         if (self.shutter.getPosition(shutterId) > s1):   #Is Shutter above requested Position?
                                             self.shutter.lowerPartial(shutterId, s1)
                                         else:
-                                            self.LogWarn("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or below requested position")                                         
+                                            LOGGER.warning("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or below requested position")                                         
                                     else :  
                                         for i in range(self.config.SendRepeat):
                                             self.shutter.lower(shutterId)
@@ -328,8 +325,8 @@ class Scheduler(threading.Thread, MyLog):
                                 elif (eventDetail[1].startswith("stop")):
                                     self.shutter.stop(shutterId)
                             except Exception as e:
-                                self.LogError ("Error: cannot open "+shutterId)
-                                self.LogError (traceback.format_exc())
+                                LOGGER.error ("Error: cannot open "+shutterId)
+                                LOGGER.error (traceback.format_exc())
                     eventsToDelete.append(eventTimeStr);
             for key in eventsToDelete:
                 try:
@@ -337,10 +334,10 @@ class Scheduler(threading.Thread, MyLog):
                 except KeyError:
                     pass
             if (len(eventsToDelete) > 0):
-                self.LogDebug(str(self.currentSchedule))
+                LOGGER.debug(str(self.currentSchedule))
          
             self.shutdown_flag.wait(60 - datetime.datetime.now().time().second)
             
-        self.LogError("Received Signal to shut down Scheduler thread")
+        LOGGER.error("Received Signal to shut down Scheduler thread")
         return
 

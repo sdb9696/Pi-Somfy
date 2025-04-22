@@ -13,11 +13,13 @@ import socket
 import signal, atexit, subprocess, traceback
 import threading
 import json
+import logging
 from copy import deepcopy
+
+LOGGER = logging.getLogger(__name__)
 
 try:
     # pip3 install paho-mqtt
-    from .mylog import MyLog
     import paho.mqtt.client as paho
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
@@ -56,7 +58,7 @@ class DiscoveryMsg():
         return json.dumps(self.discovery_msg)
 
 
-class MQTT(threading.Thread, MyLog):
+class MQTT(threading.Thread):
     connected_flag = False    
     
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
@@ -66,8 +68,6 @@ class MQTT(threading.Thread, MyLog):
         self.t = ()        
         self.args = args
         self.kwargs = kwargs
-        if kwargs["log"] != None:
-            self.log = kwargs["log"]
         if kwargs["shutter"] != None:
             self.shutter = kwargs["shutter"]
         if kwargs["config"] != None:
@@ -76,15 +76,15 @@ class MQTT(threading.Thread, MyLog):
         return
 
     def receiveMessageFromMQTT(self, client, userdata, message):
-        self.LogInfo("starting receiveMessageFromMQTT")
+        LOGGER.info("starting receiveMessageFromMQTT")
         try:
             msg = str(message.payload.decode("utf-8"))
             topic = message.topic
-            self.LogInfo("message received from MQTT: "+topic+" = "+msg)
+            LOGGER.info("message received from MQTT: "+topic+" = "+msg)
     
             [prefix, shutterId, property, command] = topic.split("/")
             if (command == "cmd"):
-                self.LogInfo("sending message: "+str(msg))
+                LOGGER.info("sending message: "+str(msg))
                 if msg == "STOP":
                     self.shutter.stop(shutterId)
                 elif int(msg) == 0:
@@ -98,15 +98,15 @@ class MQTT(threading.Thread, MyLog):
                     elif int(msg) < currentPosition:   
                         self.shutter.lowerPartial(shutterId, int(msg))
             else:
-                self.LogError("received unkown message: "+topic+", message: "+msg)
+                LOGGER.error("received unkown message: "+topic+", message: "+msg)
     
         except Exception as e1:
-            self.LogError("Exception Occured: " + str(e1))
+            LOGGER.error("Exception Occured: " + str(e1))
     
-        self.LogInfo("finishing receiveMessageFromMQTT")
+        LOGGER.info("finishing receiveMessageFromMQTT")
 
     def sendMQTT(self, topic, msg):
-        self.LogInfo("sending message to MQTT: " + topic + " = " + msg)
+        LOGGER.info("sending message to MQTT: " + topic + " = " + msg)
         self.t.publish(topic,msg,retain=True)
         
     def sendStartupInfo(self):
@@ -115,13 +115,13 @@ class MQTT(threading.Thread, MyLog):
 
     def on_connect(self, client, userdata, flags, rc):
         if rc==0:
-            self.LogInfo("Connected to MQTT with result code "+str(rc))
+            LOGGER.info("Connected to MQTT with result code "+str(rc))
             self.connected_flag = True
             for shutter, shutterId in sorted(self.config.ShuttersByName.items(), key=lambda kv: kv[1]):
-                self.LogInfo("Subscribe to shutter: "+shutter)
+                LOGGER.info("Subscribe to shutter: "+shutter)
                 self.t.subscribe("somfy/"+shutterId+"/level/cmd")
             if self.config.EnableDiscovery == True:
-                self.LogInfo("Sending Home Assistant MQTT Discovery messages")
+                LOGGER.info("Sending Home Assistant MQTT Discovery messages")
                 self.sendStartupInfo()
         else:
             print("Bad connection Returned code= ",rc)
@@ -130,20 +130,20 @@ class MQTT(threading.Thread, MyLog):
     def on_disconnect(self, client, userdata, rc=0):
         self.connected_flag=False
         if rc != 0:
-            self.LogInfo("Disconnected from MQTT Server. result code: " + str(rc))
+            LOGGER.info("Disconnected from MQTT Server. result code: " + str(rc))
             #while not self.connected_flag: #wait in loop
-            #    self.LogInfo("Waiting 30sec for reconnect")
+            #    LOGGER.info("Waiting 30sec for reconnect")
             #    time.sleep(30)
             #    self.t.connect(self.config.MQTT_Server,self.config.MQTT_Port)
 
             
     def set_state(self, shutterId, level):
-        self.LogInfo("Received request to set Shutter "+shutterId+" to "+str(level))
+        LOGGER.info("Received request to set Shutter "+shutterId+" to "+str(level))
         self.sendMQTT("somfy/"+shutterId+"/level/set_state", str(level))
             
     def run(self):
         self.connected_flag = False
-        self.LogInfo("Entering MQTT polling loop")
+        LOGGER.info("Entering MQTT polling loop")
 
         # Setup the mqtt client
         self.t = paho.Client(client_id=self.config.MQTT_ClientID)
@@ -160,16 +160,16 @@ class MQTT(threading.Thread, MyLog):
         while not self.shutdown_flag.is_set():
             # Loop until the server is available
             try:
-                self.LogInfo("Connecting to MQTT server")
+                LOGGER.info("Connecting to MQTT server")
                 self.t.connect(self.config.MQTT_Server,self.config.MQTT_Port)
                 time.sleep(10)
                 break
             except Exception as e:
                 error += 1
                 if error == 1:
-                    self.LogInfo("Exception in MQTT connect, will retry " + str(error_failure_count) + " times, " + str(error) + ": "+ str(e.args))
+                    LOGGER.info("Exception in MQTT connect, will retry " + str(error_failure_count) + " times, " + str(error) + ": "+ str(e.args))
                 if error >= error_failure_count:
-                    self.LogError(f"MQTT connect error count exceeded failure threshold of {error_failure_count}.  MQQT functionality will not be active.  Have you installed mosquitto?")
+                    LOGGER.error(f"MQTT connect error count exceeded failure threshold of {error_failure_count}.  MQQT functionality will not be active.  Have you installed mosquitto?")
                     return
                 time.sleep(2)
 
@@ -181,18 +181,18 @@ class MQTT(threading.Thread, MyLog):
                 self.t.loop(timeout=30)
                 # self.t.loop_start()
                 if self.connected_flag == False:
-                    self.LogInfo("Re-Connecting to MQTT server")
+                    LOGGER.info("Re-Connecting to MQTT server")
                     self.t.connect(self.config.MQTT_Server,self.config.MQTT_Port)
                     time.sleep(10)
             except Exception as e:
                 error += 1
-                self.LogInfo("Critical MQTT exception " + str(error) + ": "+ str(e.args))
+                LOGGER.info("Critical MQTT exception " + str(error) + ": "+ str(e.args))
                 if error >= error_failure_count:
-                    self.LogError(f"MQTT connect error count exceeded failure threshold of {error_failure_count}.  MQQT functionality will not be active.")
+                    LOGGER.error(f"MQTT connect error count exceeded failure threshold of {error_failure_count}.  MQQT functionality will not be active.")
                     return
                 time.sleep(0.5) #Wait half a second when an exception occurs
 
-        self.LogError("Received Signal to shut down MQTT thread")
+        LOGGER.error("Received Signal to shut down MQTT thread")
         return
 
  

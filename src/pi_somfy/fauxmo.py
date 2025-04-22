@@ -36,13 +36,10 @@ import sys
 import time
 import urllib
 import uuid
+import logging
 
-try:
-    from .mylog import MyLog
-except Exception as e1:
-    print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
-    print("Error: " + str(e1))
-    sys.exit(2)
+LOGGER = logging.getLogger(__name__)
+
 
 # This XML is the minimum needed to define one of our virtual switches
 # to the Amazon Echo
@@ -75,11 +72,11 @@ SETUP_XML ="""<?xml version=1.0?>
 # A simple utility class to wait for incoming data to be
 # ready on a socket.
 
-class poller (MyLog):
-    def __init__(self, log):
+class poller:
+    def __init__(self):
         self.poller = select.poll()
         self.targets = {}
-        self.log = log
+
 
     def add(self, target, fileno = None):
         if not fileno:
@@ -107,7 +104,7 @@ class poller (MyLog):
 # but it supports either specified or automatic IP address and port
 # selection.
 
-class upnp_device(MyLog, object):
+class upnp_device:
     this_host_ip = None
 
     @staticmethod
@@ -120,11 +117,11 @@ class upnp_device(MyLog, object):
             except:
                 upnp_device.this_host_ip = '127.0.0.1'
             del(temp_socket)
-            # self.LogInfo("got local address of %s" % upnp_device.this_host_ip)
+            # LOGGER.info("got local address of %s" % upnp_device.this_host_ip)
         return upnp_device.this_host_ip
 
 
-    def __init__(self, listener, poller, port, root_url, server_version, persistent_uuid, other_headers = None, ip_address = None, log = None):
+    def __init__(self, listener, poller, port, root_url, server_version, persistent_uuid, other_headers = None, ip_address = None):
         self.listener = listener
         self.poller = poller
         self.port = port
@@ -133,8 +130,6 @@ class upnp_device(MyLog, object):
         self.persistent_uuid = persistent_uuid
         self.uuid = uuid.uuid4()
         self.other_headers = other_headers
-        if (log != None): 
-            self.log = log
 
         if ip_address:
             self.ip_address = ip_address
@@ -174,7 +169,7 @@ class upnp_device(MyLog, object):
         return "unknown"
 
     def respond_to_search(self, destination, search_target):
-        # self.LogDebug("Responding to search for %s" % self.get_name())
+        # LOGGER.debug("Responding to search for %s" % self.get_name())
         date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
         location_url = self.root_url % {'ip_address' : self.ip_address, 'port' : self.port}
         message = ("HTTP/1.1 200 OK\r\n"
@@ -202,34 +197,32 @@ class fauxmo(upnp_device):
     def make_uuid(name):
         return ''.join(["%x" % sum([ord(c) for c in name])] + ["%x" % ord(c) for c in "%sfauxmo!" % name])[:14]
 
-    def __init__(self, name, listener, poller, ip_address, port, action_handler = None, log = None):
+    def __init__(self, name, listener, poller, ip_address, port, action_handler = None):
         self.serial = self.make_uuid(name)
         self.name = name
         self.switchStatus=0
         self.ip_address = ip_address
-        if (log != None):
-            self.log = log
         persistent_uuid = "Socket-1_0-" + self.serial
         other_headers = ['X-User-Agent: redsonic']
-        upnp_device.__init__(self, listener, poller, port, "http://%(ip_address)s:%(port)s/setup.xml", "Unspecified, UPnP/1.0, Unspecified", persistent_uuid, other_headers=other_headers, ip_address=ip_address, log=self.log)
+        upnp_device.__init__(self, listener, poller, port, "http://%(ip_address)s:%(port)s/setup.xml", "Unspecified, UPnP/1.0, Unspecified", persistent_uuid, other_headers=other_headers, ip_address=ip_address)
         if action_handler:
             self.action_handler = action_handler
         else:
             self.action_handler = self
-        self.LogInfo("FauxMo device '%s' ready on %s:%s" % (self.name, self.ip_address, self.port))
+        LOGGER.info("FauxMo device '%s' ready on %s:%s" % (self.name, self.ip_address, self.port))
 
     def get_name(self):
         return self.name
 
     def handle_request(self, data, sender, socket, client_address):
-        # self.LogDebug("################################## BEGIN  handle_request #######################")
-        self.LogDebug("HANDLE REQUEST: "+str(data))
-        # self.LogDebug("################################## END    handle_request #######################")
+        # LOGGER.debug("################################## BEGIN  handle_request #######################")
+        LOGGER.debug("HANDLE REQUEST: "+str(data))
+        # LOGGER.debug("################################## END    handle_request #######################")
         data = data.decode('utf-8')
         success = False
         
         if data.find('GET /setup.xml HTTP/1.1') == 0:
-            self.LogInfo("Responding to setup.xml for %s" % self.name)
+            LOGGER.info("Responding to setup.xml for %s" % self.name)
             xml = SETUP_XML % {'device_name' : self.name, 'device_serial' : self.serial}
             date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
             message = ("HTTP/1.1 200 OK\r\n"
@@ -252,22 +245,22 @@ class fauxmo(upnp_device):
             if data.find('SetBinaryState') != -1:
                 if data.find('<BinaryState>1</BinaryState>') != -1:
                     # on
-                    self.LogInfo("Responding to ON for %s" % self.name)
+                    LOGGER.info("Responding to ON for %s" % self.name)
                     success = self.action_handler.on(client_address[0], self.name)
                     self.switchStatus=1
                 elif data.find('<BinaryState>0</BinaryState>') != -1:
                     # off
-                    self.LogInfo("Responding to OFF for %s" % self.name)
+                    LOGGER.info("Responding to OFF for %s" % self.name)
                     success = self.action_handler.off(client_address[0], self.name)
                     self.switchStatus=0
                 else:
-                    self.LogInfo("Unknown Binary State request:")
-                    self.LogInfo(data)
+                    LOGGER.info("Unknown Binary State request:")
+                    LOGGER.info(data)
                                 
             if success:
                 # The echo is happy with the 200 status code and doesn't
                 # appear to care about the SOAP response body
-                #self.LogInfo("Unknown Binary State request:")
+                #LOGGER.info("Unknown Binary State request:")
                 soap = "" 
                 date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
                 message = ("HTTP/1.1 200 OK\r\n"
@@ -308,12 +301,12 @@ class fauxmo(upnp_device):
                        "\r\n"
                        "%s" % (len(soap), date_str, soap))
             socket.send(bytes(message, 'UTF-8'))
-            # self.LogDebug("################################## BEGIN response #######################")
-            self.LogDebug("SEND RESPONSE: "+str(data.replace('\n','\\n').replace('\r','\\r')))
-            # self.LogDebug("################################## END response #######################")
+            # LOGGER.debug("################################## BEGIN response #######################")
+            LOGGER.debug("SEND RESPONSE: "+str(data.replace('\n','\\n').replace('\r','\\r')))
+            # LOGGER.debug("################################## END response #######################")
 
         else:
-            self.LogInfo(data)
+            LOGGER.info(data)
 
     def on(self):
         return False
@@ -331,12 +324,11 @@ class fauxmo(upnp_device):
 # support the more common root device general search. The Echo
 # doesn't search for root devices.
 
-class upnp_broadcast_responder(MyLog, object):
+class upnp_broadcast_responder:
     TIMEOUT = 0
 
-    def __init__(self, log):
+    def __init__(self):
         self.devices = []
-        self.log = log
 
     def init_socket(self):
         ok = True
@@ -353,20 +345,20 @@ class upnp_broadcast_responder(MyLog, object):
             try:
                 self.ssock.bind(('',self.port))
             except Exception:
-                self.LogWarn("WARNING: Failed to bind %s:%d" % (self.ip,self.port))
+                LOGGER.warning("WARNING: Failed to bind %s:%d" % (self.ip,self.port))
                 ok = False
 
             try:
                 self.ssock.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,self.mreq)
             except Exception:
-                self.LogWarn('WARNING: Failed to join multicast group:')
+                LOGGER.warning('WARNING: Failed to join multicast group:')
                 ok = False
 
         except Exception:
-            self.LogInfo("Failed to initialize UPnP sockets:")
+            LOGGER.info("Failed to initialize UPnP sockets:")
             return False
         if ok:
-            self.LogInfo("Listening for UPnP broadcasts")
+            LOGGER.info("Listening for UPnP broadcasts")
 
     def fileno(self):
         return self.ssock.fileno()
@@ -398,12 +390,12 @@ class upnp_broadcast_responder(MyLog, object):
             else:
                 return False, False
         except Exception:
-            self.LogError('Error: excception occured in recvfrom')
+            LOGGER.error('Error: excception occured in recvfrom')
             return False, False
 
     def add_device(self, device):
         self.devices.append(device)
-        self.LogInfo("UPnP broadcast listener: new device registered")
+        LOGGER.info("UPnP broadcast listener: new device registered")
 
 
 class debounce_handler(object):

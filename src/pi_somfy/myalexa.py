@@ -16,9 +16,11 @@ import pigpio
 import socket
 import signal, atexit, subprocess, traceback
 import threading
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 try:
-    from .mylog import MyLog
     from . import fauxmo
     from .fauxmo import debounce_handler
 except Exception as e1:
@@ -27,18 +29,17 @@ except Exception as e1:
     sys.exit(2)
 
 
-class device_handler(debounce_handler, MyLog):
+class device_handler(debounce_handler):
     """Publishes the on/off state requested,
        and the IP address of the Echo making the request.
     """
-    def __init__(self, log=None, shutter=None, config=None):
-        self.log = log
+    def __init__(self, shutter=None, config=None):
         self.shutter = shutter
         self.config = config
         super(device_handler, self).__init__()        
     
     def act(self, client_address, state, name):
-        self.LogInfo("--> State " + str(state) + " on " + name + " from client @ " + client_address)
+        LOGGER.info("--> State " + str(state) + " on " + name + " from client @ " + client_address)
         shutterId = self.config.ShuttersByName[name]
         if state:
            self.shutter.lower(shutterId)
@@ -47,7 +48,7 @@ class device_handler(debounce_handler, MyLog):
         return True
 
 
-class Alexa(threading.Thread, MyLog, debounce_handler):
+class Alexa(threading.Thread, debounce_handler):
 
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="Alexa")
@@ -55,30 +56,28 @@ class Alexa(threading.Thread, MyLog, debounce_handler):
         
         self.args = args
         self.kwargs = kwargs
-        if kwargs["log"] != None:
-            self.log = kwargs["log"]
         if kwargs["shutter"] != None:
             self.shutter = kwargs["shutter"]
         if kwargs["config"] != None:
             self.config = kwargs["config"]
         
         # Startup the fauxmo server
-        self.poller = fauxmo.poller(log = self.log)
-        self.upnp_responder = fauxmo.upnp_broadcast_responder(log = self.log)
+        self.poller = fauxmo.poller()
+        self.upnp_responder = fauxmo.upnp_broadcast_responder()
         self.upnp_responder.init_socket()
         self.poller.add(self.upnp_responder)
 
         # Register the device callback as a fauxmo handler
-        dbh = device_handler(log=self.log, shutter=self.shutter, config=self.config)
+        dbh = device_handler(shutter=self.shutter, config=self.config)
         for shutter, shutterId in sorted(self.config.ShuttersByName.items(), key=lambda kv: kv[1]):
             portId = 50000 + (abs(int(shutterId,16)) % 10000)
-            self.LogInfo ("Remote address in dec: " + str(int(shutterId,16)) + ", WeMo port will be n°" + str(portId))
-            fauxmo.fauxmo(shutter, self.upnp_responder, self.poller, None, portId, dbh, log=self.log)
+            LOGGER.info ("Remote address in dec: " + str(int(shutterId,16)) + ", WeMo port will be n°" + str(portId))
+            fauxmo.fauxmo(shutter, self.upnp_responder, self.poller, None, portId, dbh)
                         
         return
 
     def run(self):
-        self.LogInfo("Entering fauxmo polling loop")
+        LOGGER.info("Entering fauxmo polling loop")
         error = 0
         while not self.shutdown_flag.is_set():
             # Loop and poll for incoming Echo requests
@@ -88,14 +87,14 @@ class Alexa(threading.Thread, MyLog, debounce_handler):
                 time.sleep(0.01)
             except Exception as e:
                 error += 1
-                self.LogInfo("Critical exception n°" + str(error) + ": "+ str(e.args))
+                LOGGER.info("Critical exception n°" + str(error) + ": "+ str(e.args))
                 print("Trying not to shut down Alexa")
                 time.sleep(0.5) #Wait half a second when an exception occurs
 #                if(error > 5):
-#                    self.LogError("Sixth critical error:" + str(e.args))
+#                    LOGGER.error("Sixth critical error:" + str(e.args))
 #                    break
             
-        self.LogError("Received Signal to shut down Alexa thread")
+        LOGGER.error("Received Signal to shut down Alexa thread")
         return
 
  

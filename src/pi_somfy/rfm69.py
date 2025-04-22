@@ -8,6 +8,9 @@ Based on the RFM-69 class at https://github.com/henrythasler/sdr/somfy/
 """
 
 import pigpio as gpio
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 # global defines
 ERROR = 1
