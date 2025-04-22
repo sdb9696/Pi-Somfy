@@ -1,6 +1,10 @@
-import { Button } from 'react-bootstrap';
 import { sendCommand } from '../services/api';
 import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import up from '../assets/icons/up.png';
+import down from '../assets/icons/down.png';
+import stop from '../assets/icons/stop.png';
 
 interface ManualOperationProps {
   // Update type to match actual data structure
@@ -40,36 +44,45 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                 <div className="shutter-name">{name || 'Unnamed Shutter'}</div>
                 <div className="control-buttons">
                   <Button 
-                    className="up-button" 
+                    variant="ghost"
+                    className="p-0 relative" 
                     onClick={() => handleCommand(id, 'up')}
                     disabled={loading[id+'up'] === 'loading'}
                   >
-                    {loading[id+'up'] === 'loading' ? 
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : 
-                      <span>▲</span>
-                    }
+                    <img src={up} alt="Up" className="h-12 w-12 object-contain" />
+                    {loading[id+'up'] === 'loading' && (
+                      <div className="absolute inset-x-0 bottom-0 top-1 flex items-center justify-center bg-background/40 p-0">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    )}
                   </Button>
                   
                   <Button 
-                    className="stop-button" 
+                    className="p-0 relative" 
+                    variant="ghost"
                     onClick={() => handleCommand(id, 'stop')}
                     disabled={loading[id+'stop'] === 'loading'}
                   >
-                    {loading[id+'stop'] === 'loading' ? 
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : 
-                      <span>■</span>
-                    }
+                    <img src={stop} alt="Stop" className="h-12 w-12 object-contain" />
+                    {loading[id+'stop'] === 'loading' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    )}
                   </Button>
                   
                   <Button 
-                    className="down-button" 
+                    className="p-0 relative" 
+                    variant="ghost"
                     onClick={() => handleCommand(id, 'down')}
                     disabled={loading[id+'down'] === 'loading'}
                   >
-                    {loading[id+'down'] === 'loading' ? 
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : 
-                      <span>▼</span>
-                    }
+                    <img src={down} alt="Down" className="h-12 w-12 object-contain" />
+                    {loading[id+'down'] === 'loading' && (
+                      <div className="absolute inset-x-0 bottom-1 top-0 flex items-center justify-center bg-background/40">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -78,43 +91,6 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
           <p>No shutters configured yet. Add shutters in the "Add/Remove Shutter" section.</p>
         )}
       </div>
-      
-      <style>
-        {`
-        .shutter-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 20px;
-          margin-top: 20px;
-        }
-        
-        .shutter-remote {
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 15px;
-          text-align: center;
-          background-color: #f8f9fa;
-        }
-        
-        .shutter-name {
-          font-weight: bold;
-          margin-bottom: 15px;
-        }
-        
-        .control-buttons {
-          display: flex;
-          justify-content: space-around;
-        }
-        
-        .up-button, .stop-button, .down-button {
-          width: 50px;
-          height: 50px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        `}
-      </style>
     </div>
   );
 };
