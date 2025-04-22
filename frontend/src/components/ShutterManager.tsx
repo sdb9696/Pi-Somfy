@@ -115,7 +115,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-12 bg-gray-100 p-2 font-semibold gap-x-2">
+        <div className="grid grid-cols-12 bg-secondary p-2 font-semibold gap-x-2">
           <div className="col-span-6 md:col-span-7 text-xs sm:text-sm">Shutter Name</div>
           <div className="col-span-2 text-xs sm:text-sm">
             <span className="hidden sm:inline">Operation Time (Seconds)</span>

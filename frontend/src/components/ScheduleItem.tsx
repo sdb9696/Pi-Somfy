@@ -413,12 +413,12 @@ const ScheduleItem = ({
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                         <Button
                           type="button"
+                          variant={ Array.isArray(localSchedule.repeatValue) && localSchedule.repeatValue.includes(day)
+                            ? 'default'
+                            : 'outline'
+                          }
                           key={day}
-                          className={`h-fit px-1 py-0 border rounded text-center text-xs w-7 cursor-pointer ${
-                            Array.isArray(localSchedule.repeatValue) && localSchedule.repeatValue.includes(day)
-                              ? 'bg-primary text-white'
-                              : 'bg-white text-gray-800 border-gray-300'
-                          }`}
+                          className="h-fit px-1 py-0 border rounded text-center text-xs"
                           onClick={() => {
                             const currentDays = Array.isArray(localSchedule.repeatValue) ? [...localSchedule.repeatValue] : [];
                             let newDays;

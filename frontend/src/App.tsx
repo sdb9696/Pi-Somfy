@@ -5,6 +5,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { ThemeProvider } from "@/components/theme-provider";
+import ThemeToggle from "@/components/ThemeToggle";
 import { getConfig } from './services/api';
 import MapSettings from './components/MapSettings';
 import ShutterManager from './components/ShutterManager';
@@ -59,8 +61,14 @@ function App() {
 
 
   return (
+    <ThemeProvider>
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <h1 className="my-4">Operate Somfy Shutters</h1>
+      <div className="relative flex justify-between items-center my-4">
+        <h1>Operate Somfy Shutters</h1>
+        <div className="absolute top-0 right-0">
+          <ThemeToggle />
+        </div>
+      </div>
       
       <Accordion
         type="single"
@@ -141,6 +149,7 @@ function App() {
       </div>
     )}
     </div>
+    </ThemeProvider>
   );
 }
 

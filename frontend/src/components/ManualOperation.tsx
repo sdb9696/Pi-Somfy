@@ -40,7 +40,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
               return String(nameA || '').localeCompare(String(nameB || ''));
             })
             .map(([id, name]) => (
-              <div key={id} className="shutter-remote flex flex-col bg-white rounded-3xl shadow-lg shadow-gray-400/50 p-4 border border-gray-200 w-[125px] pb-10">
+              <div key={id} className="shutter-remote flex flex-col rounded-3xl shadow-lg shadow-gray-400/50 p-4 border border-gray-200 w-[125px] pb-10">
                 <div className="shutter-name text-center font-medium mb-3 h-[50px] overflow-hidden">
                   <div className="line-clamp-2 w-full pt-1">{name || 'Unnamed Shutter'}</div>
                 </div>
