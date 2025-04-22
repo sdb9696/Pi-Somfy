@@ -28,23 +28,21 @@ function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState<string>('');
-  console.log('Current activeKey:', activeKey);
 
-  useEffect(() => {
-    console.log('activeKey changed to:', activeKey);
-    // Breakpoint can be set on this line
-  }, [activeKey]);
+
   useEffect(() => {
     const fetchConfig = async () => {
       try {
         const data = await getConfig();
         setConfig(data);
         
-        // Determine which panel to open by default
-        if (data.Longitude === 0) {
-          setActiveKey('settings');
-        } else if (Object.keys(data.Shutters).length === 0) {
-          setActiveKey('shutters');
+        if (!activeKey) {
+          // Determine which panel to open by default
+          if (Object.keys(data.Shutters).length === 0) {
+            setActiveKey('shutters');
+          } else {
+            setActiveKey('manual');
+          }
         }
         
         setLoading(false);
