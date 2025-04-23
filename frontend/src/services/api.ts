@@ -16,6 +16,11 @@ export const getConfig = async () => {
   return response.data;
 };
 
+export const pressButtons = async (shutter: string, buttons: string, longPress: boolean) => {
+  const response = await api.postForm('press', { shutter, buttons, longPress });
+  return response.data;
+};
+
 export const sendCommand = async (shutter: string, command: string) => {
   const response = await api.postForm(command, { shutter });
   return response.data;
