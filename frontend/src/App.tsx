@@ -20,6 +20,7 @@ import MapSettings from './components/MapSettings';
 import ShutterManager from './components/ShutterManager';
 import ScheduleManager from './components/ScheduleManager';
 import ManualOperation from './components/ManualOperation';
+import SettingsManager from './components/SettingsManager';
 import { Config } from './types';
 import './App.css'
 
@@ -132,7 +133,7 @@ function App() {
         </TabsContent>
         <TabsContent value="settings" className="space-y-4">
           {config && (
-            <MapSettings
+            <SettingsManager
               initialLatitude={config.Latitude}
               initialLongitude={config.Longitude}
               onLocationSaved={refreshConfig}
