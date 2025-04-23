@@ -76,79 +76,70 @@ function App() {
         </div>
       </div>
       
-      <Accordion
-        type="single"
-        collapsible
-        value={activeKey}
-        onValueChange={(val) => setActiveKey(val || "")}
-      >        
-        <AccordionItem value="settings">
-          <AccordionTrigger>
-            <span className="me-2">⚙️</span> Settings
-          </AccordionTrigger>
-          <AccordionContent>
+      <Tabs defaultValue={activeKey || "manual"} onValueChange={(val) => setActiveKey(val)} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-4 h-auto">
+          <TabsTrigger value="manual" className="flex flex-col sm:flex-row items-center gap-1 h-full py-2">
+            <ArrowUpDown className="w-4 h-4" />
+            <span>Control</span>
+          </TabsTrigger>
+          <TabsTrigger value="schedules" className="flex flex-col sm:flex-row items-center gap-1 h-full py-2">
+            <CalendarClock className="w-4 h-4" />
+            <span>Schedule</span>
             {config && (
-              <MapSettings 
-                initialLatitude={config.Latitude} 
-                initialLongitude={config.Longitude} 
-                onLocationSaved={refreshConfig}
-              />
-            )}
-          </AccordionContent>
-        </AccordionItem>
-        
-        <AccordionItem value="shutters">
-          <AccordionTrigger>
-            <span className="me-2">📋</span> Add/Remove Shutter
-            {config && (
-              <span className="ms-2 badge bg-secondary">
-                {Object.keys(config.Shutters).length}
-              </span>
-            )}
-          </AccordionTrigger>
-          <AccordionContent>
-            {config && (
-              <ShutterManager 
-                shutters={config.Shutters}
-                shutterDurations={config.ShutterDurations} 
-                onShutterChange={refreshConfig}
-              />
-            )}
-          </AccordionContent>
-        </AccordionItem>
-        
-        <AccordionItem value="schedules">
-          <AccordionTrigger>
-            <span className="me-2">⏰</span> Scheduled Operation
-            {config && (
-              <span className="ms-2 badge bg-secondary">
+              <Badge variant="outline" className="hidden sm:inline-flex mt-1 sm:mt-0 sm:ms-2">
                 {Object.keys(config.Schedule).length}
-              </span>
+              </Badge>
             )}
-          </AccordionTrigger>
-          <AccordionContent>
+          </TabsTrigger>
+          <TabsTrigger value="shutters" className="flex flex-col sm:flex-row items-center gap-1 h-full py-2">
+            <Blinds className="w-4 h-4" />
+            <span>Add/Remove</span>
             {config && (
-              <ScheduleManager 
-                schedules={config.Schedule}
-                shutters={config.Shutters}
-                onScheduleChange={refreshConfig}
-              />
+              <Badge variant="outline" className="hidden sm:inline-flex mt-1 sm:mt-0 sm:ms-2">
+                {Object.keys(config.Shutters).length}
+              </Badge>
             )}
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="manual">
-          <AccordionTrigger>
-            <span className="me-2">🔄</span> Manual Operation
-          </AccordionTrigger>
-          <AccordionContent>
-            {config && (
-              <ManualOperation 
-                shutters={config.Shutters}
-              />
-            )}
-          </AccordionContent>
-        </AccordionItem>        
-      </Accordion>
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex flex-col sm:flex-row items-center gap-1 h-full py-2">
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="manual" className="space-y-4">
+          {config && (
+            <ManualOperation
+              shutters={config.Shutters}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="schedules" className="space-y-4">
+          {config && (
+            <ScheduleManager
+              schedules={config.Schedule}
+              shutters={config.Shutters}
+              onScheduleChange={refreshConfig}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="shutters" className="space-y-4">
+          {config && (
+            <ShutterManager
+              shutters={config.Shutters}
+              shutterDurations={config.ShutterDurations}
+              onShutterChange={refreshConfig}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="settings" className="space-y-4">
+          {config && (
+            <MapSettings
+              initialLatitude={config.Latitude}
+              initialLongitude={config.Longitude}
+              onLocationSaved={refreshConfig}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
       { loading && (
       <div className="fixed inset-0 flex items-center justify-center bg-white/50 z-50">
         <div className="w-12 h-12 border-4 border-t-transparent border-blue-500 rounded-full animate-spin" />
