@@ -130,17 +130,17 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
 
       <div className="border rounded-lg overflow-hidden">
         <div className="grid grid-cols-12 bg-secondary p-2 font-semibold gap-x-2">
-          <div className="col-span-6 md:col-span-7 text-xs sm:text-sm">Shutter Name</div>
+          <div className="col-span-4 sm:col-span-6 text-xs sm:text-sm">Shutter Name</div>
           <div className="col-span-2 text-xs sm:text-sm">
             <span className="hidden sm:inline">Operation Time (Seconds)</span>
             <span className="sm:hidden">Time (s)</span>
           </div>
-          <div className="col-span-4 md:col-span-3 text-xs sm:text-sm">Actions</div>
+          <div className="col-span-6 sm:col-span-4 text-xs sm:text-sm">Actions</div>
         </div>
         <div>
           {Object.entries(shutters).map(([id, name]) => (
             <div key={id} className="grid grid-cols-12 p-2 border-t items-center gap-x-2">
-              <div className="col-span-6 md:col-span-7">
+              <div className="col-span-4 sm:col-span-6">
                 {isEditing && editingShutter?.id === id ? (
                   <Input
                     type="text"
@@ -164,7 +164,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                   <span className="text-xs sm:text-base">{shutterDurations[id] || '10'}</span>
                 )}
               </div>
-              <div className="col-span-4 md:col-span-3 flex justify-start gap-1 sm:gap-2 items-center">
+              <div className="col-span-6 sm:col-span-4 flex justify-evenly gap-1 sm:gap-2 items-center">
                 {isEditing && editingShutter?.id === id ? (
                   <>
                     <Button variant="default" size="icon" onClick={handleSaveEdit}>
@@ -176,12 +176,12 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                   </>
                 ) : (
                   <>
-                    <Button variant="ghost" size="icon" onClick={() => startEditing(id)}>
+                    <Button variant="ghost"size="icon" onClick={() => startEditing(id)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button variant="destructive" size="icon">
+                        <Button variant="destructive"size="icon">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
@@ -204,7 +204,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                     </Dialog>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost"size="icon">
                           <Link className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
