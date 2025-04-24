@@ -1,20 +1,10 @@
 import { useRef, useState } from 'react';
-import { Button, Alert } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import { Icon } from 'leaflet';
 import { setLocation } from '../services/api';
-import 'leaflet/dist/leaflet.css';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui';
+import 'leaflet/dist/leaflet.css'
 
-// Fix the marker icon issue with React-Leaflet
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = new Icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
-});
 
 interface MapSettingsProps {
   initialLatitude: number;
@@ -36,7 +26,7 @@ const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: Map
     initialLatitude || 51.505, 
     initialLongitude || -0.09
   ]);
-  const [message, setMessage] = useState<{ text: string, type: string } | null>(null);
+  
   const mapRef = useRef<any>(null);
   
   const handleLocationUpdate = (lat: number, lng: number) => {
@@ -47,27 +37,21 @@ const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: Map
     try {
       const result = await setLocation(position[0], position[1]);
       if (result.status === 'OK') {
-        setMessage({ text: 'Location saved successfully!', type: 'success' });
+        toast.success('Location saved successfully!');
         onLocationSaved();
       } else {
-        setMessage({ text: 'Error saving location', type: 'danger' });
+        toast.error('Error saving location', {description: result.message});
       }
     } catch (error) {
-      setMessage({ text: 'Error saving location', type: 'danger' });
-      console.error('Error saving location:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Error saving location', {description: errorMessage});
     }
   };
   
   return (
     <div>
       <p>Select your home location by clicking on the map:</p>
-      
-      {message && (
-        <Alert variant={message.type as any} onClose={() => setMessage(null)} dismissible>
-          {message.text}
-        </Alert>
-      )}
-      
+            
       <div style={{ height: '400px', marginBottom: '20px' }}>
         <MapContainer 
           center={position} 
@@ -79,12 +63,12 @@ const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: Map
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <Marker position={position} icon={DefaultIcon} />
+          <Marker position={position}/>
           <MapEvents onLocationUpdate={handleLocationUpdate} />
         </MapContainer>
       </div>
       
-      <Button variant="primary" onClick={handleSaveLocation}>
+      <Button onClick={handleSaveLocation}>
         Save Location
       </Button>
     </div>
