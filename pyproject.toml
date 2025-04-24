@@ -15,6 +15,7 @@ dependencies = [
     "numpy",
     "click",
     "tomlkit>=0.13.2",
+    "pyopenssl>=25.0.0",
 ]
 
 [dependency-groups]

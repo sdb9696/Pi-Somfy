@@ -291,7 +291,8 @@ class FlaskAppWrapper(threading.Thread):
 
     def generate_adhoc_ssl_context(self):
         """Generates an adhoc SSL context for the development server."""
-        #        crypto = _get_openssl_crypto_module()
+        import ssl
+        from OpenSSL import crypto
         import tempfile
         import atexit
         from random import random
@@ -332,8 +333,7 @@ class FlaskAppWrapper(threading.Thread):
 
     def run(self):
         if self.config.UseHttps:
-            import ssl
-            from OpenSSL import crypto
+
             LOGGER.info("Starting secure WebServer on Port "+str(self.config.HTTPSPort))
             self.app.run(host="0.0.0.0", port=self.config.HTTPSPort, threaded = True, ssl_context=self.generate_adhoc_ssl_context(), use_reloader = False, debug = False)
         else:
