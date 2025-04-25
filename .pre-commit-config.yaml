@@ -10,5 +10,6 @@ repos:
     hooks:
       - id: ruff
         args: [--fix-only]  # Automatically fix issues where possible
+      - id: ruff-format
 
 exclude: '^(frontend/public/|html/)'

@@ -3,10 +3,13 @@ import logging
 import threading
 import re
 from .config import MyConfig
+
 try:
     from flask import Flask, request, Response, json
 except Exception as e1:
-    print("\n\nThis program requires the Flask library. Please see the project documentation at https://github.com/Nickduino/Pi-Somfy.\n")
+    print(
+        "\n\nThis program requires the Flask library. Please see the project documentation at https://github.com/Nickduino/Pi-Somfy.\n"
+    )
     print("Error: " + str(e1))
     sys.exit(2)
 
@@ -17,17 +20,18 @@ import traceback
 
 LOGGER = logging.getLogger(__name__)
 
+
 def camel_to_snake(name):
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
-class EndpointAction():
 
+class EndpointAction:
     def __init__(self, action):
         self.action = action
         self.response = Response(status=200, headers={})
 
     def __call__(self, *args, **kwargs):
-        if ((len(args) > 0) or (len(kwargs) > 0)):
+        if (len(args) > 0) or (len(kwargs) > 0):
             self.response = self.action(args, kwargs)
         else:
             self.response = self.action()
@@ -38,20 +42,36 @@ class FlaskAppWrapper(threading.Thread):
     app = None
     CriticalLock = None
 
-    def __init__(self, name = __name__, static_url_path = '', shutter = None, schedule = None, config: MyConfig = None):
+    def __init__(
+        self,
+        name=__name__,
+        static_url_path="",
+        shutter=None,
+        schedule=None,
+        config: MyConfig = None,
+    ):
         threading.Thread.__init__(self, name="Web Server")
 
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
         self.shutter = shutter
         self.schedule = schedule
         self.config = config
 
-        self.app = Flask(import_name=name, static_url_path="", static_folder=static_url_path)
+        self.app = Flask(
+            import_name=name, static_url_path="", static_folder=static_url_path
+        )
         self.app.after_request(self.add_header)
-        self.add_endpoint(endpoint='/', endpoint_name='main', handler=self.request_main)
-        self.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=self.shutdown_server)
-        self.add_endpoint(endpoint='/cmd/<command>', endpoint_name='cmd', handler=self.process_command, methods=['GET', 'POST'])
+        self.add_endpoint(endpoint="/", endpoint_name="main", handler=self.request_main)
+        self.add_endpoint(
+            endpoint="/shutdown", endpoint_name="shutdown", handler=self.shutdown_server
+        )
+        self.add_endpoint(
+            endpoint="/cmd/<command>",
+            endpoint_name="cmd",
+            handler=self.process_command,
+            methods=["GET", "POST"],
+        )
 
     def isfloat(self, value):
         try:
@@ -61,30 +81,63 @@ class FlaskAppWrapper(threading.Thread):
             return False
 
     def add_header(self, r):
-        r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, public, max-age=0"
+        r.headers["Cache-Control"] = (
+            "no-cache, no-store, must-revalidate, public, max-age=0"
+        )
         r.headers["Pragma"] = "no-cache"
         r.headers["Expires"] = "0"
 
         return r
 
-    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, methods=['GET']):
-        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler), methods=methods)
+    def add_endpoint(
+        self, endpoint=None, endpoint_name=None, handler=None, methods=["GET"]
+    ):
+        self.app.add_url_rule(
+            endpoint, endpoint_name, EndpointAction(handler), methods=methods
+        )
 
     def request_main(self):
         if not self.validate_password(header=False):
             return self.app.send_static_file("error.html")
         LOGGER.debug(request.url)
-        return self.app.send_static_file('index.html')
+        return self.app.send_static_file("index.html")
 
     def process_command(self, *args, **kwargs):
-        LOGGER.debug(request.url + " ( "+ request.method + " ): "+ str(args) + " | "+ str(kwargs))
+        LOGGER.debug(
+            request.url
+            + " ( "
+            + request.method
+            + " ): "
+            + str(args)
+            + " | "
+            + str(kwargs)
+        )
         try:
             # LOGGER.debug(request.values.get('sitename', 0, type=str))
             # LOGGER.debug("JSON: "+str(request.get_json()))
             # LOGGER.debug("RAW: "+str(request.get_data()))
-            command = args[1]['command']
-            if command in ["up", "down", "stop", "program", "press", "getConfig", "addSchedule", "editSchedule", "deleteSchedule", "addShutter", "editShutter", "deleteShutter", "setLocation" ]:
-                LOGGER.info("processing Command \"" + command + "\" with parameters: "+str(request.values))
+            command = args[1]["command"]
+            if command in [
+                "up",
+                "down",
+                "stop",
+                "program",
+                "press",
+                "getConfig",
+                "addSchedule",
+                "editSchedule",
+                "deleteSchedule",
+                "addShutter",
+                "editShutter",
+                "deleteShutter",
+                "setLocation",
+            ]:
+                LOGGER.info(
+                    'processing Command "'
+                    + command
+                    + '" with parameters: '
+                    + str(request.values)
+                )
                 snake_command = camel_to_snake(command)
                 result = getattr(self, snake_command)(request.values)
                 return Response(json.dumps(result), status=200)
@@ -116,133 +169,173 @@ class FlaskAppWrapper(threading.Thread):
         return True
 
     def shutdown_server(self):
-        func = request.environ.get('werkzeug.server.shutdown')
+        func = request.environ.get("werkzeug.server.shutdown")
         if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
+            raise RuntimeError("Not running with the Werkzeug Server")
         func()
         return Response("Shutting Down", status=400)
 
     def up(self, params):
         if not self.validate_password():
-            return {'status': 'ERROR'}
-        shutter=params.get('shutter', 0, type=str)
-        LOGGER.debug("rise shutter \""+shutter+"\"")
-        if (shutter not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+            return {"status": "ERROR"}
+        shutter = params.get("shutter", 0, type=str)
+        LOGGER.debug('rise shutter "' + shutter + '"')
+        if shutter not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         self.shutter.rise(shutter)
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def down(self, params):
         if not self.validate_password():
-            return {'status': 'ERROR'}
-        shutter=params.get('shutter', 0, type=str)
-        LOGGER.debug("lower shutter \""+shutter+"\"")
-        if (shutter not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+            return {"status": "ERROR"}
+        shutter = params.get("shutter", 0, type=str)
+        LOGGER.debug('lower shutter "' + shutter + '"')
+        if shutter not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         self.shutter.lower(shutter)
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def stop(self, params):
         if not self.validate_password():
-            return {'status': 'ERROR'}
-        shutter=params.get('shutter', 0, type=str)
-        LOGGER.debug("stop shutter \""+shutter+"\"")
-        if (shutter not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+            return {"status": "ERROR"}
+        shutter = params.get("shutter", 0, type=str)
+        LOGGER.debug('stop shutter "' + shutter + '"')
+        if shutter not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         self.shutter.stop(shutter)
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def program(self, params):
-        shutter=params.get('shutter', 0, type=str)
-        LOGGER.debug("program shutter \""+shutter+"\"")
-        if (shutter not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+        shutter = params.get("shutter", 0, type=str)
+        LOGGER.debug('program shutter "' + shutter + '"')
+        if shutter not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         self.shutter.program(shutter)
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def press(self, params):
-        shutter=params.get('shutter', 0, type=str)
-        buttons = params.get('buttons', 0, type=int)
-        long_press = params.get('longPress', 0, type=str) == "true"
-        LOGGER.debug(("long" if long_press else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
-        if (shutter not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+        shutter = params.get("shutter", 0, type=str)
+        buttons = params.get("buttons", 0, type=int)
+        long_press = params.get("longPress", 0, type=str) == "true"
+        LOGGER.debug(
+            ("long" if long_press else "short")
+            + ' press buttons: "'
+            + str(buttons)
+            + '" shutter "'
+            + shutter
+            + '"'
+        )
+        if shutter not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         self.shutter.press_buttons(shutter, buttons, long_press)
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def set_location(self, params):
-        LOGGER.debug("set Location: "+params.get('lat', 0, type=str)+" / "+params.get('lng', 0, type=str))
-        self.config.set_location(params.get('lat', 0, type=str), params.get('lng', 0, type=str))
+        LOGGER.debug(
+            "set Location: "
+            + params.get("lat", 0, type=str)
+            + " / "
+            + params.get("lng", 0, type=str)
+        )
+        self.config.set_location(
+            params.get("lat", 0, type=str), params.get("lng", 0, type=str)
+        )
         self.schedule.set_update_time()
-        return {'status': 'OK'}
+        return {"status": "OK"}
 
     def add_shutter(self, params):
         if sys.version_info[0] < 3:
             import unicodedata
-            name = params.get('name', 0, type=unicode)
-            name = unicodedata.normalize('NFKD', name).encode('ascii','ignore')
-            duration = params.get('duration', 0, type=unicode)
-            duration = unicodedata.normalize('NFKD', duration).encode('ascii','ignore')
+
+            name = params.get("name", 0, type=unicode)
+            name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore")
+            duration = params.get("duration", 0, type=unicode)
+            duration = unicodedata.normalize("NFKD", duration).encode("ascii", "ignore")
         else:
-            name = params.get('name', 0, type=str)
-            duration = params.get('duration', 0, type=str)
-        LOGGER.debug("add shutter: "+ name)
-        if (name in self.config.shutters_by_name):
-            return {'status': 'ERROR', 'message': 'Name is not unique'}
-        elif ("," in name):
-            return {'status': 'ERROR', 'message': 'New name can not contain SPACES or COMMAS'}
+            name = params.get("name", 0, type=str)
+            duration = params.get("duration", 0, type=str)
+        LOGGER.debug("add shutter: " + name)
+        if name in self.config.shutters_by_name:
+            return {"status": "ERROR", "message": "Name is not unique"}
+        elif "," in name:
+            return {
+                "status": "ERROR",
+                "message": "New name can not contain SPACES or COMMAS",
+            }
         elif not self.isfloat(duration):
-            return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
+            return {
+                "status": "ERROR",
+                "message": "seconds must be a number (may contain decimals)",
+            }
         else:
             self.config.add_shutter(name, duration)
             id = self.config.shutters_by_name[name]
-            LOGGER.debug("got a new shutter id: "+str(id))
-            return {'status': 'OK', 'id': str(id)}
+            LOGGER.debug("got a new shutter id: " + str(id))
+            return {"status": "OK", "id": str(id)}
 
     def edit_shutter(self, params):
-        id = params.get('id', 0, type=str)
+        id = params.get("id", 0, type=str)
         if sys.version_info[0] < 3:
             import unicodedata
-            name = params.get('name', 0, type=unicode)
-            name = unicodedata.normalize('NFKD', name).encode('ascii','ignore')
-            duration = params.get('duration', 0, type=unicode)
-            duration = unicodedata.normalize('NFKD', duration).encode('ascii','ignore')
+
+            name = params.get("name", 0, type=unicode)
+            name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore")
+            duration = params.get("duration", 0, type=unicode)
+            duration = unicodedata.normalize("NFKD", duration).encode("ascii", "ignore")
         else:
-            name = params.get('name', 0, type=str)
-            duration = params.get('duration', 0, type=str)
-        LOGGER.debug("edit shutter: "+id+" / "+name)
-        if (id not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
-        elif ((name == self.config.shutters[id]['name']) and (duration == self.config.shutters[id]['durationDown'])):
-            return {'status': 'ERROR', 'message': 'Neither Name nor Duration has not changed, remaining the same.'}
-        elif ((name != self.config.shutters[id]['name']) and (name in self.config.shutters_by_name)):
-            return {'status': 'ERROR', 'message': 'Name is not unique'}
-        elif ("," in name):
-            return {'status': 'ERROR', 'message': 'New name can not contain COMMAS'}
+            name = params.get("name", 0, type=str)
+            duration = params.get("duration", 0, type=str)
+        LOGGER.debug("edit shutter: " + id + " / " + name)
+        if id not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
+        elif (name == self.config.shutters[id]["name"]) and (
+            duration == self.config.shutters[id]["durationDown"]
+        ):
+            return {
+                "status": "ERROR",
+                "message": "Neither Name nor Duration has not changed, remaining the same.",
+            }
+        elif (name != self.config.shutters[id]["name"]) and (
+            name in self.config.shutters_by_name
+        ):
+            return {"status": "ERROR", "message": "Name is not unique"}
+        elif "," in name:
+            return {"status": "ERROR", "message": "New name can not contain COMMAS"}
         elif not self.isfloat(duration):
-            return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
+            return {
+                "status": "ERROR",
+                "message": "seconds must be a number (may contain decimals)",
+            }
         else:
             self.config.set_shutter(id, name, duration)
 
-            return {'status': 'OK'}
+            return {"status": "OK"}
 
     def delete_shutter(self, params):
-        id = params.get('id', 0, type=str)
-        LOGGER.debug("delete shutter: "+id)
-        if (id not in self.config.shutters):
-            return {'status': 'ERROR', 'message': 'Shutter does not exist'}
+        id = params.get("id", 0, type=str)
+        LOGGER.debug("delete shutter: " + id)
+        if id not in self.config.shutters:
+            return {"status": "ERROR", "message": "Shutter does not exist"}
         else:
             self.config.set_shutter_active(id, False)
-            return {'status': 'OK'}
+            return {"status": "OK"}
 
     def add_schedule(self, params):
         if not self.validate_password():
-            return {'status': 'ERROR', 'message': 'Invalid password'}
+            return {"status": "ERROR", "message": "Invalid password"}
 
         try:
-            active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids = self._get_schedule_params(params)
+            (
+                active,
+                repeat_type,
+                repeat_value,
+                time_type,
+                time_value,
+                shutter_action,
+                shutter_ids,
+            ) = self._get_schedule_params(params)
         except ValueError as e:
-            return {'status': 'ERROR', 'message': str(e)}
+            return {"status": "ERROR", "message": str(e)}
 
         LOGGER.debug("create new schedule")
         return self.schedule.add_schedule(
@@ -257,44 +350,80 @@ class FlaskAppWrapper(threading.Thread):
 
     def edit_schedule(self, params):
         if not self.validate_password():
-            return {'status': 'ERROR', 'message': 'Invalid password'}
+            return {"status": "ERROR", "message": "Invalid password"}
 
-        id = params.get('id', type=str)
+        id = params.get("id", type=str)
         if not id:
-            return {'status': 'ERROR', 'message': 'Schedule ID is required'}
+            return {"status": "ERROR", "message": "Schedule ID is required"}
 
         try:
-            active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids = self._get_schedule_params(params)
+            (
+                active,
+                repeat_type,
+                repeat_value,
+                time_type,
+                time_value,
+                shutter_action,
+                shutter_ids,
+            ) = self._get_schedule_params(params)
         except ValueError as e:
-            return {'status': 'ERROR', 'message': str(e)}
+            return {"status": "ERROR", "message": str(e)}
 
-        LOGGER.debug("change schedule: "+id)
-        return self.schedule.edit_schedule(id, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
+        LOGGER.debug("change schedule: " + id)
+        return self.schedule.edit_schedule(
+            id,
+            active,
+            repeat_type,
+            repeat_value,
+            time_type,
+            time_value,
+            shutter_action,
+            shutter_ids,
+        )
 
     def _get_schedule_params(self, params):
-        param_values = {key: params.get(key) for key in ['active', 'repeatType', 'repeatValue', 'timeType', 'timeValue', 'shutterAction', 'shutterIds']}
-        param_values['shutterIds'] = params.getlist('shutterIds[]')
-        if param_values['repeatType'] != "once":
-            param_values['repeatValue'] = params.getlist('repeatValue[]')
+        param_values = {
+            key: params.get(key)
+            for key in [
+                "active",
+                "repeatType",
+                "repeatValue",
+                "timeType",
+                "timeValue",
+                "shutterAction",
+                "shutterIds",
+            ]
+        }
+        param_values["shutterIds"] = params.getlist("shutterIds[]")
+        if param_values["repeatType"] != "once":
+            param_values["repeatValue"] = params.getlist("repeatValue[]")
         missing_params = [key for key, val in param_values.items() if not val]
         if missing_params:
-            raise ValueError(f"Missing or empty parameter values: {', '.join(missing_params)}")
+            raise ValueError(
+                f"Missing or empty parameter values: {', '.join(missing_params)}"
+            )
 
         return (param_value for param_value in param_values.values())
 
     def delete_schedule(self, params):
-        id = params.get('id', 0, type=str)
-        LOGGER.debug("delete schedule: "+id)
+        id = params.get("id", 0, type=str)
+        LOGGER.debug("delete schedule: " + id)
         return self.schedule.delete_schedule(id)
 
     def get_config(self, params):
         shutters = {}
         durations = {}
         for k in self.config.shutters:
-            shutters[k] = self.config.shutters[k]['name']
-            durations[k] = self.config.shutters[k]['durationDown']
-        obj = {'Latitude': self.config.Latitude, 'Longitude': self.config.Longitude, 'Shutters': shutters, 'ShutterDurations': durations, 'Schedule': self.schedule.get_schedule_as_dict()}
-        LOGGER.debug("getConfig called, sending: "+json.dumps(obj))
+            shutters[k] = self.config.shutters[k]["name"]
+            durations[k] = self.config.shutters[k]["durationDown"]
+        obj = {
+            "Latitude": self.config.Latitude,
+            "Longitude": self.config.Longitude,
+            "Shutters": shutters,
+            "ShutterDurations": durations,
+            "Schedule": self.schedule.get_schedule_as_dict(),
+        }
+        LOGGER.debug("getConfig called, sending: " + json.dumps(obj))
         return obj
 
     def generate_adhoc_ssl_context(self):
@@ -310,17 +439,17 @@ class FlaskAppWrapper(threading.Thread):
         cert.gmtime_adj_notAfter(60 * 60 * 24 * 365)
 
         subject = cert.get_subject()
-        subject.CN = '*'
-        subject.O = 'Dummy Certificate'
+        subject.CN = "*"
+        subject.O = "Dummy Certificate"
 
         issuer = cert.get_issuer()
-        issuer.CN = 'Untrusted Authority'
-        issuer.O = 'Self-Signed'
+        issuer.CN = "Untrusted Authority"
+        issuer.O = "Self-Signed"
 
         pkey = crypto.PKey()
         pkey.generate_key(crypto.TYPE_RSA, 2048)
         cert.set_pubkey(pkey)
-        cert.sign(pkey, 'sha256')
+        cert.sign(pkey, "sha256")
 
         cert_handle, cert_file = tempfile.mkstemp()
         pkey_handle, pkey_file = tempfile.mkstemp()
@@ -337,13 +466,26 @@ class FlaskAppWrapper(threading.Thread):
         ctx.verify_mode = ssl.CERT_NONE
         return ctx
 
-
     def run(self):
         if self.config.UseHttps:
-
-            LOGGER.info("Starting secure WebServer on Port "+str(self.config.HTTPSPort))
-            self.app.run(host="0.0.0.0", port=self.config.HTTPSPort, threaded = True, ssl_context=self.generate_adhoc_ssl_context(), use_reloader = False, debug = False)
+            LOGGER.info(
+                "Starting secure WebServer on Port " + str(self.config.HTTPSPort)
+            )
+            self.app.run(
+                host="0.0.0.0",
+                port=self.config.HTTPSPort,
+                threaded=True,
+                ssl_context=self.generate_adhoc_ssl_context(),
+                use_reloader=False,
+                debug=False,
+            )
         else:
-            LOGGER.info("Starting WebServer on Port "+str(self.config.HTTPPort))
-            self.app.run(host="0.0.0.0", threaded = True, port=self.config.HTTPPort, use_reloader = False, debug = False)
+            LOGGER.info("Starting WebServer on Port " + str(self.config.HTTPPort))
+            self.app.run(
+                host="0.0.0.0",
+                threaded=True,
+                port=self.config.HTTPPort,
+                use_reloader=False,
+                debug=False,
+            )
         LOGGER.info("Stopping WebServer")

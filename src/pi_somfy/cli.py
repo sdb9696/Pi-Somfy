@@ -12,15 +12,13 @@ from .operate_shutters import OperateShutters, Args
 from .config import MyConfig
 from logging.handlers import RotatingFileHandler
 
+
 def setup_logger(log_file, level=logging.DEBUG, stream=False):
     handlers = []
 
     if log_file:
         file_handler = RotatingFileHandler(
-            log_file,
-            mode='a',
-            maxBytes=50000,
-            backupCount=5
+            log_file, mode="a", maxBytes=50000, backupCount=5
         )
         handlers.append(file_handler)
 
@@ -28,7 +26,9 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
         console_handler = logging.StreamHandler()
         handlers.append(console_handler)
 
-    formatter = logging.Formatter('%(asctime)s : [%(levelname)s] (%(threadName)-10s) %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s : [%(levelname)s] (%(threadName)-10s) %(message)s"
+    )
     for h in handlers:
         if isinstance(h, RotatingFileHandler):
             h.setFormatter(formatter)
@@ -100,7 +100,9 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
     f"Try: https://{socket.gethostname()}",
 )
 @click.option("-auto", hidden=True, is_flag=True)
-@click.option("-e", "--echo", is_flag=True, help="Enable Amazon Alexa (Echo) integration")
+@click.option(
+    "-e", "--echo", is_flag=True, help="Enable Amazon Alexa (Echo) integration"
+)
 @click.option("-echo", hidden=True, is_flag=True)
 @click.option("-m", "--mqtt", is_flag=True, help="Enable MQTT integration")
 @click.option("-mqtt", hidden=True, is_flag=True)
@@ -158,7 +160,7 @@ def cli(
         duskdawn=duskdawn,
         auto=auto,
         echo=echo,
-        mqtt=mqtt
+        mqtt=mqtt,
     )
     # Start things up
     my_shutter = OperateShutters(config=config, args=args)
@@ -172,6 +174,7 @@ def cli(
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     cli()

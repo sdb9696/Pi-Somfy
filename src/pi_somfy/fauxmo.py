@@ -41,7 +41,7 @@ LOGGER = logging.getLogger(__name__)
 # This XML is the minimum needed to define one of our virtual switches
 # to the Amazon Echo
 
-SETUP_XML ="""<?xml version=1.0?>
+SETUP_XML = """<?xml version=1.0?>
             <root>
              <device>
                 <deviceType>urn:Belkin:device:controllee:1</deviceType>
@@ -69,25 +69,25 @@ SETUP_XML ="""<?xml version=1.0?>
 # A simple utility class to wait for incoming data to be
 # ready on a socket.
 
+
 class Poller:
     def __init__(self):
         self.poller = select.poll()
         self.targets = {}
 
-
-    def add(self, target, fileno = None):
+    def add(self, target, fileno=None):
         if not fileno:
             fileno = target.fileno()
         self.poller.register(fileno, select.POLLIN)
         self.targets[fileno] = target
 
-    def remove(self, target, fileno = None):
+    def remove(self, target, fileno=None):
         if not fileno:
             fileno = target.fileno()
         self.poller.unregister(fileno)
-        del(self.targets[fileno])
+        del self.targets[fileno]
 
-    def poll(self, timeout = 0):
+    def poll(self, timeout=0):
         ready = self.poller.poll(timeout)
         num = len(ready)
         for one_ready in ready:
@@ -101,6 +101,7 @@ class Poller:
 # but it supports either specified or automatic IP address and port
 # selection.
 
+
 class UPNPDevice:
     this_host_ip = None
 
@@ -109,16 +110,25 @@ class UPNPDevice:
         if not UPNPDevice.this_host_ip:
             temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
-                temp_socket.connect(('8.8.8.8', 53))
+                temp_socket.connect(("8.8.8.8", 53))
                 UPNPDevice.this_host_ip = temp_socket.getsockname()[0]
             except:
-                UPNPDevice.this_host_ip = '127.0.0.1'
-            del(temp_socket)
+                UPNPDevice.this_host_ip = "127.0.0.1"
+            del temp_socket
             # LOGGER.info("got local address of %s" % upnp_device.this_host_ip)
         return UPNPDevice.this_host_ip
 
-
-    def __init__(self, listener, poller, port, root_url, server_version, persistent_uuid, other_headers = None, ip_address = None):
+    def __init__(
+        self,
+        listener,
+        poller,
+        port,
+        root_url,
+        server_version,
+        persistent_uuid,
+        other_headers=None,
+        ip_address=None,
+    ):
         self.listener = listener
         self.poller = poller
         self.port = port
@@ -150,14 +160,22 @@ class UPNPDevice:
         if fileno == self.socket.fileno():
             (client_socket, client_address) = self.socket.accept()
             self.poller.add(self, client_socket.fileno())
-            self.client_sockets[client_socket.fileno()] = (client_socket, client_address)
+            self.client_sockets[client_socket.fileno()] = (
+                client_socket,
+                client_address,
+            )
         else:
             data, sender = self.client_sockets[fileno][0].recvfrom(4096)
             if not data:
                 self.poller.remove(self, fileno)
-                del(self.client_sockets[fileno])
+                del self.client_sockets[fileno]
             else:
-                self.handle_request(data, sender, self.client_sockets[fileno][0], self.client_sockets[fileno][1])
+                self.handle_request(
+                    data,
+                    sender,
+                    self.client_sockets[fileno][0],
+                    self.client_sockets[fileno][1],
+                )
 
     def handle_request(self, data, sender, socket, client_address):
         pass
@@ -168,84 +186,123 @@ class UPNPDevice:
     def respond_to_search(self, destination, search_target):
         # LOGGER.debug("Responding to search for %s" % self.get_name())
         date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
-        location_url = self.root_url % {'ip_address' : self.ip_address, 'port' : self.port}
-        message = ("HTTP/1.1 200 OK\r\n"
-                  "CACHE-CONTROL: max-age=86400\r\n"
-                  "DATE: %s\r\n"
-                  "EXT:\r\n"
-                  "LOCATION: %s\r\n"
-                  "OPT: \"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n"
-                  "01-NLS: %s\r\n"
-                  "SERVER: %s\r\n"
-                  "ST: %s\r\n"
-                  "USN: uuid:%s::%s\r\n" % (date_str, location_url, self.uuid, self.server_version, search_target, self.persistent_uuid, search_target))
+        location_url = self.root_url % {
+            "ip_address": self.ip_address,
+            "port": self.port,
+        }
+        message = (
+            "HTTP/1.1 200 OK\r\n"
+            "CACHE-CONTROL: max-age=86400\r\n"
+            "DATE: %s\r\n"
+            "EXT:\r\n"
+            "LOCATION: %s\r\n"
+            'OPT: "http://schemas.upnp.org/upnp/1/0/"; ns=01\r\n'
+            "01-NLS: %s\r\n"
+            "SERVER: %s\r\n"
+            "ST: %s\r\n"
+            "USN: uuid:%s::%s\r\n"
+            % (
+                date_str,
+                location_url,
+                self.uuid,
+                self.server_version,
+                search_target,
+                self.persistent_uuid,
+                search_target,
+            )
+        )
         if self.other_headers:
             for header in self.other_headers:
                 message += "%s\r\n" % header
         message += "\r\n"
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        temp_socket.sendto(bytes(message, 'UTF-8'), destination)
-        #print("Responding to search-->" + message )
+        temp_socket.sendto(bytes(message, "UTF-8"), destination)
+        # print("Responding to search-->" + message )
+
 
 # This subclass does the bulk of the work to mimic a WeMo switch on the network.
+
 
 class FauxMo(UPNPDevice):
     @staticmethod
     def make_uuid(name):
-        return ''.join(["%x" % sum([ord(c) for c in name])] + ["%x" % ord(c) for c in "%sfauxmo!" % name])[:14]
+        return "".join(
+            ["%x" % sum([ord(c) for c in name])]
+            + ["%x" % ord(c) for c in "%sfauxmo!" % name]
+        )[:14]
 
-    def __init__(self, name, listener, poller, ip_address, port, action_handler = None):
+    def __init__(self, name, listener, poller, ip_address, port, action_handler=None):
         self.serial = self.make_uuid(name)
         self.name = name
         self.switch_status = 0
         self.ip_address = ip_address
         persistent_uuid = "Socket-1_0-" + self.serial
-        other_headers = ['X-User-Agent: redsonic']
-        UPNPDevice.__init__(self, listener, poller, port, "http://%(ip_address)s:%(port)s/setup.xml", "Unspecified, UPnP/1.0, Unspecified", persistent_uuid, other_headers=other_headers, ip_address=ip_address)
+        other_headers = ["X-User-Agent: redsonic"]
+        UPNPDevice.__init__(
+            self,
+            listener,
+            poller,
+            port,
+            "http://%(ip_address)s:%(port)s/setup.xml",
+            "Unspecified, UPnP/1.0, Unspecified",
+            persistent_uuid,
+            other_headers=other_headers,
+            ip_address=ip_address,
+        )
         if action_handler:
             self.action_handler = action_handler
         else:
             self.action_handler = self
-        LOGGER.info("FauxMo device '%s' ready on %s:%s" % (self.name, self.ip_address, self.port))
+        LOGGER.info(
+            "FauxMo device '%s' ready on %s:%s"
+            % (self.name, self.ip_address, self.port)
+        )
 
     def get_name(self):
         return self.name
 
     def handle_request(self, data, sender, socket, client_address):
         # LOGGER.debug("################################## BEGIN  handle_request #######################")
-        LOGGER.debug("HANDLE REQUEST: "+str(data))
+        LOGGER.debug("HANDLE REQUEST: " + str(data))
         # LOGGER.debug("################################## END    handle_request #######################")
-        data = data.decode('utf-8')
+        data = data.decode("utf-8")
         success = False
 
-        if data.find('GET /setup.xml HTTP/1.1') == 0:
+        if data.find("GET /setup.xml HTTP/1.1") == 0:
             LOGGER.info("Responding to setup.xml for %s" % self.name)
-            xml = SETUP_XML % {'device_name' : self.name, 'device_serial' : self.serial}
-            date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
-            message = ("HTTP/1.1 200 OK\r\n"
-                       "CONTENT-LENGTH: %d\r\n"
-                       "CONTENT-TYPE: text/xml\r\n"
-                       "DATE: %s\r\n"
-                       "LAST-MODIFIED: Sat, 01 Jan 2000 00:01:15 GMT\r\n"
-                       "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
-                       "X-User-Agent: redsonic\r\n"
-                       "CONNECTION: close\r\n"
-                       "\r\n"
-                       "%s" % (len(xml), date_str, xml))
-            socket.send(bytes(message, 'UTF-8'))
-            #print("responsed to setup-->" + message)
+            xml = SETUP_XML % {"device_name": self.name, "device_serial": self.serial}
+            date_str = email.utils.formatdate(
+                timeval=None, localtime=False, usegmt=True
+            )
+            message = (
+                "HTTP/1.1 200 OK\r\n"
+                "CONTENT-LENGTH: %d\r\n"
+                "CONTENT-TYPE: text/xml\r\n"
+                "DATE: %s\r\n"
+                "LAST-MODIFIED: Sat, 01 Jan 2000 00:01:15 GMT\r\n"
+                "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
+                "X-User-Agent: redsonic\r\n"
+                "CONNECTION: close\r\n"
+                "\r\n"
+                "%s" % (len(xml), date_str, xml)
+            )
+            socket.send(bytes(message, "UTF-8"))
+            # print("responsed to setup-->" + message)
 
-        elif data.find('SOAPACTION: "urn:Belkin:service:basicevent:1#SetBinaryState"') != -1:
-        #elif data.find('urn:Belkin:service:basicevent:1') != -1:
-        #elif data.find("SetBinaryState") != -1:
+        elif (
+            data.find('SOAPACTION: "urn:Belkin:service:basicevent:1#SetBinaryState"')
+            != -1
+        ):
+            # elif data.find('urn:Belkin:service:basicevent:1') != -1:
+            # elif data.find("SetBinaryState") != -1:
 
-            if data.find('SetBinaryState') != -1:
-                if data.find('<BinaryState>1</BinaryState>') != -1:
+            if data.find("SetBinaryState") != -1:
+                if data.find("<BinaryState>1</BinaryState>") != -1:
                     # on
                     LOGGER.info("Responding to ON for %s" % self.name)
                     success = self.action_handler.on(client_address[0], self.name)
                     self.switch_status = 1
-                elif data.find('<BinaryState>0</BinaryState>') != -1:
+                elif data.find("<BinaryState>0</BinaryState>") != -1:
                     # off
                     LOGGER.info("Responding to OFF for %s" % self.name)
                     success = self.action_handler.off(client_address[0], self.name)
@@ -257,49 +314,62 @@ class FauxMo(UPNPDevice):
             if success:
                 # The echo is happy with the 200 status code and doesn't
                 # appear to care about the SOAP response body
-                #LOGGER.info("Unknown Binary State request:")
+                # LOGGER.info("Unknown Binary State request:")
                 soap = ""
-                date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
-                message = ("HTTP/1.1 200 OK\r\n"
-                           "CONTENT-LENGTH: %d\r\n"
-                           "CONTENT-TYPE: text/xml charset=\"utf-8\"\r\n"
-                           "DATE: %s\r\n"
-                           "EXT:\r\n"
-                           "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
-                           "X-User-Agent: redsonic\r\n"
-                           "CONNECTION: close\r\n"
-                           "\r\n"
-                           "%s" % (len(soap), date_str, soap))
-                socket.send(bytes(message, 'UTF-8'))
+                date_str = email.utils.formatdate(
+                    timeval=None, localtime=False, usegmt=True
+                )
+                message = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "CONTENT-LENGTH: %d\r\n"
+                    'CONTENT-TYPE: text/xml charset="utf-8"\r\n'
+                    "DATE: %s\r\n"
+                    "EXT:\r\n"
+                    "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
+                    "X-User-Agent: redsonic\r\n"
+                    "CONNECTION: close\r\n"
+                    "\r\n"
+                    "%s" % (len(soap), date_str, soap)
+                )
+                socket.send(bytes(message, "UTF-8"))
 
-        elif data.find('GetBinaryState'):
-            #if data.find('<BinaryState>1</BinaryState>') != -1:
+        elif data.find("GetBinaryState"):
+            # if data.find('<BinaryState>1</BinaryState>') != -1:
             #    switch_sate="1"
-            #else:
+            # else:
             #    switch_sate="0"
-            soap = """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+            soap = (
+                """<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
                 <s:Body>
                     <u:GetBinaryStateResponse
                     xmlns:u="urn:Belkin:service:basicevent:1">
-                    <BinaryState>"""+ str(self.switch_status) +"""</BinaryState>
+                    <BinaryState>"""
+                + str(self.switch_status)
+                + """</BinaryState>
                     </u:GetBinaryStateResponse>
                 </s:Body></s:Envelope>"""
+            )
 
-
-            date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
-            message = ("HTTP/1.1 200 OK\r\n"
-                       "CONTENT-LENGTH: %d\r\n"
-                       "CONTENT-TYPE: text/xml charset=\"utf-8\"\r\n"
-                       "DATE: %s\r\n"
-                       "EXT:\r\n"
-                       "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
-                       "X-User-Agent: redsonic\r\n"
-                       "CONNECTION: close\r\n"
-                       "\r\n"
-                       "%s" % (len(soap), date_str, soap))
-            socket.send(bytes(message, 'UTF-8'))
+            date_str = email.utils.formatdate(
+                timeval=None, localtime=False, usegmt=True
+            )
+            message = (
+                "HTTP/1.1 200 OK\r\n"
+                "CONTENT-LENGTH: %d\r\n"
+                'CONTENT-TYPE: text/xml charset="utf-8"\r\n'
+                "DATE: %s\r\n"
+                "EXT:\r\n"
+                "SERVER: Unspecified, UPnP/1.0, Unspecified\r\n"
+                "X-User-Agent: redsonic\r\n"
+                "CONNECTION: close\r\n"
+                "\r\n"
+                "%s" % (len(soap), date_str, soap)
+            )
+            socket.send(bytes(message, "UTF-8"))
             # LOGGER.debug("################################## BEGIN response #######################")
-            LOGGER.debug("SEND RESPONSE: "+str(data.replace('\n','\\n').replace('\r','\\r')))
+            LOGGER.debug(
+                "SEND RESPONSE: " + str(data.replace("\n", "\\n").replace("\r", "\\r"))
+            )
             # LOGGER.debug("################################## END response #######################")
 
         else:
@@ -321,6 +391,7 @@ class FauxMo(UPNPDevice):
 # support the more common root device general search. The Echo
 # doesn't search for root devices.
 
+
 class UPNPBroadcastResponder:
     TIMEOUT = 0
 
@@ -329,26 +400,30 @@ class UPNPBroadcastResponder:
 
     def init_socket(self):
         ok = True
-        self.ip = '239.255.255.250'
+        self.ip = "239.255.255.250"
         self.port = 1900
         try:
-            #This is needed to join a multicast group
-            self.mreq = struct.pack("4sl",socket.inet_aton(self.ip),socket.INADDR_ANY)
+            # This is needed to join a multicast group
+            self.mreq = struct.pack("4sl", socket.inet_aton(self.ip), socket.INADDR_ANY)
 
-            #Set up server socket
-            self.ssock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM,socket.IPPROTO_UDP)
-            self.ssock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            # Set up server socket
+            self.ssock = socket.socket(
+                socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+            )
+            self.ssock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
             try:
-                self.ssock.bind(('',self.port))
+                self.ssock.bind(("", self.port))
             except Exception:
-                LOGGER.warning("WARNING: Failed to bind %s:%d" % (self.ip,self.port))
+                LOGGER.warning("WARNING: Failed to bind %s:%d" % (self.ip, self.port))
                 ok = False
 
             try:
-                self.ssock.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,self.mreq)
+                self.ssock.setsockopt(
+                    socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, self.mreq
+                )
             except Exception:
-                LOGGER.warning('WARNING: Failed to join multicast group:')
+                LOGGER.warning("WARNING: Failed to join multicast group:")
                 ok = False
 
         except Exception:
@@ -362,18 +437,23 @@ class UPNPBroadcastResponder:
 
     def do_read(self, fileno):
         data, sender = self.recvfrom(1024)
-        data = data.decode('utf-8')
+        data = data.decode("utf-8")
         if data:
-            #if data.find('M-SEARCH') == 0 and data.find('urn:Belkin:device:**') != -1:
-            if data.find('M-SEARCH') >= 0 and data.find('urn:Belkin:device:**') >0 or data.find('n:Belkin:device:**') >0 or data.find('upnp:rootdevice') >0:
+            # if data.find('M-SEARCH') == 0 and data.find('urn:Belkin:device:**') != -1:
+            if (
+                data.find("M-SEARCH") >= 0
+                and data.find("urn:Belkin:device:**") > 0
+                or data.find("n:Belkin:device:**") > 0
+                or data.find("upnp:rootdevice") > 0
+            ):
                 for device in self.devices:
                     time.sleep(0.5)
-                    device.respond_to_search(sender, 'urn:Belkin:device:**')
+                    device.respond_to_search(sender, "urn:Belkin:device:**")
             else:
                 pass
 
-    #Receive network data
-    def recvfrom(self,size):
+    # Receive network data
+    def recvfrom(self, size):
         if self.TIMEOUT:
             self.ssock.setblocking(0)
             ready = select.select([self.ssock], [], [], self.TIMEOUT)[0]
@@ -387,7 +467,7 @@ class UPNPBroadcastResponder:
             else:
                 return False, False
         except Exception:
-            LOGGER.error('Error: excception occured in recvfrom')
+            LOGGER.error("Error: excception occured in recvfrom")
             return False, False
 
     def add_device(self, device):
@@ -397,8 +477,9 @@ class UPNPBroadcastResponder:
 
 class DebounceHandler(object):
     """Use this handler to keep multiple Amazon Echo devices from reacting to
-       the same voice command.
+    the same voice command.
     """
+
     DEBOUNCE_SECONDS = 0.3
 
     def __init__(self):
@@ -419,9 +500,9 @@ class DebounceHandler(object):
 
     def debounce(self):
         """If multiple Echos are present, the one most likely to respond first
-           is the one that can best hear the speaker... which is the closest one.
-           Adding a refractory period to handlers keeps us from worrying about
-           one Echo overhearing a command meant for another one.
+        is the one that can best hear the speaker... which is the closest one.
+        Adding a refractory period to handlers keeps us from worrying about
+        one Echo overhearing a command meant for another one.
         """
         if (time.time() - self.last_echo) < self.DEBOUNCE_SECONDS:
             return True

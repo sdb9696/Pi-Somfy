@@ -17,11 +17,22 @@ ERROR = 1
 INFO = 2
 TRACE = 3
 
+
 class Rfm69(object):
     """RFM69-Class"""
+
     # pylint: disable=too-many-instance-attributes, C0301, C0103
 
-    def __init__(self, host="localhost", port=8888, channel=0, baudrate=10000000, debug_level=0, *, connected_pigpio=None):
+    def __init__(
+        self,
+        host="localhost",
+        port=8888,
+        channel=0,
+        baudrate=10000000,
+        debug_level=0,
+        *,
+        connected_pigpio=None,
+    ):
         # general variables
         self.debug_level = debug_level
 
@@ -37,7 +48,9 @@ class Rfm69(object):
 
     def __enter__(self):
         self.pi = self.connected_pigpio or gpio.pi(self.host, self.port)
-        self.handle = self.pi.spi_open(self.channel, self.baudrate, 0)  # Flags: CPOL=0 and CPHA=0
+        self.handle = self.pi.spi_open(
+            self.channel, self.baudrate, 0
+        )  # Flags: CPOL=0 and CPHA=0
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -49,7 +62,7 @@ class Rfm69(object):
     def debug(self, message, level=0):
         """Debug output depending on debug level."""
         if self.debug_level >= level:
-            print (message)
+            print(message)
 
     def read_single(self, address):
         """Read single register via spi"""
@@ -64,7 +77,7 @@ class Rfm69(object):
     def write_burst(self, address, data):
         """Write bytearray of data beginning at address"""
         (count, data) = self.pi.spi_xfer(self.handle, [address | 0x80] + data)
-        return count == (len(data)+1)
+        return count == (len(data) + 1)
 
     def write_config(self, cfg):
         """Write cfg-tuble like this: ((register1, value1), (register2, value2), ...)"""

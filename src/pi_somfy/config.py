@@ -6,6 +6,7 @@ import logging
 from tomlkit import dumps, parse, table, nl, document, comment
 from pathlib import Path
 from contextlib import contextmanager
+
 try:
     from ConfigParser import RawConfigParser
 except ImportError:
@@ -14,115 +15,118 @@ except ImportError:
 LOGGER = logging.getLogger(__name__)
 
 GENERAL_PARAMETERS = {
-    'LogLocation': str,
-    'LogToConsole': bool,
-    'Latitude': float,
-    'Longitude': float,
-    'SendRepeat': int,
-    'TXGPIO': int,
-    'Rfm69ResetGPIO': int,
-    'Rfm69SPIChannel': int,
-    'Rfm69Enabled': bool,
-    'PIGPIOHost': str,
-    'PIGPIOPort': int,
-    'UseHttps': bool,
-    'HTTPPort': int,
-    'HTTPSPort': int,
-    'RTS_Address': str,
-    "Password": str
+    "LogLocation": str,
+    "LogToConsole": bool,
+    "Latitude": float,
+    "Longitude": float,
+    "SendRepeat": int,
+    "TXGPIO": int,
+    "Rfm69ResetGPIO": int,
+    "Rfm69SPIChannel": int,
+    "Rfm69Enabled": bool,
+    "PIGPIOHost": str,
+    "PIGPIOPort": int,
+    "UseHttps": bool,
+    "HTTPPort": int,
+    "HTTPSPort": int,
+    "RTS_Address": str,
+    "Password": str,
 }
 MQQT_PARAMETERS = {
-    'MQTT_Server': str,
-    'MQTT_Port': int,
-    'MQTT_User': str,
-    'MQTT_Password': str,
-    'MQTT_ClientID': str,
-    'EnableDiscovery': bool
+    "MQTT_Server": str,
+    "MQTT_Port": int,
+    "MQTT_User": str,
+    "MQTT_Password": str,
+    "MQTT_ClientID": str,
+    "EnableDiscovery": bool,
 }
 
 CONFIG_COMMENTS = {
-    'LogLocation': ['location of log files (required)'],
-    'Latitude': [
-        'PUT YOUR OWN COORDINATES HERE',
-        'Latitude of the place for computation of sunset and sunrise.',
-        'check on Google Maps for instance'
+    "LogLocation": ["location of log files (required)"],
+    "Latitude": [
+        "PUT YOUR OWN COORDINATES HERE",
+        "Latitude of the place for computation of sunset and sunrise.",
+        "check on Google Maps for instance",
     ],
-    'Longitude': [
-        'PUT YOUR OWN COORDINATES HERE',
-        'Longitude of the place for computation of sunset and sunrise.',
-        'check on Google Maps for instance'
+    "Longitude": [
+        "PUT YOUR OWN COORDINATES HERE",
+        "Longitude of the place for computation of sunset and sunrise.",
+        "check on Google Maps for instance",
     ],
-    'SendRepeat': [
-        'Repeat each command a certain number of times. This is to ensure it works',
-        'if the remote is far away from the shutter and sometime EMI prevents a',
-        'signal to go through',
-        'This option only applies if a shutter is raised or lowered in full. If',
-        'a shutter is only raised or lowered for a given amount of seconds, this',
-        'option does not apply for obvious reasons.'
+    "SendRepeat": [
+        "Repeat each command a certain number of times. This is to ensure it works",
+        "if the remote is far away from the shutter and sometime EMI prevents a",
+        "signal to go through",
+        "This option only applies if a shutter is raised or lowered in full. If",
+        "a shutter is only raised or lowered for a given amount of seconds, this",
+        "option does not apply for obvious reasons.",
     ],
-    'TXGPIO': [
-        '(Optional) This parameter specifes the GPIO connector where the 433.42 MHz',
-        'emitter is connected to. The default value is 4'
+    "TXGPIO": [
+        "(Optional) This parameter specifes the GPIO connector where the 433.42 MHz",
+        "emitter is connected to. The default value is 4",
     ],
-    'Rfm69ResetGPIO': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
-        'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
-        'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
+    "Rfm69ResetGPIO": [
+        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
     ],
-    'Rfm69SPIChannel': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
-        'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
-        'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
+    "Rfm69SPIChannel": [
+        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
     ],
-    'Rfm69Enabled': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
-        'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
-        'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
+    "Rfm69Enabled": [
+        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
     ],
-    'PIGPIOHost': ['(Optional) These parameters configure remote GPIO access via PIOPIO'],
-    'PIGPIOPort': ['(Optional) These parameters configure remote GPIO access via PIOPIO'],
-    'UseHttps': [
-        'This parameter, if true will enable the use of HTTPS',
-        '(secure HTTP) in the Flask web app or user name and password',
-        'authentication, depending on the options below. This option is only',
-        'applicable to the web app. This option requires python-openssl library',
-        'to be installed'
+    "PIGPIOHost": [
+        "(Optional) These parameters configure remote GPIO access via PIOPIO"
     ],
-    'HTTPPort': [
-        '(Optional) This parameter will allow the HTTP port to be set by the web',
-        'interface. The default is 80, but this setting will override that',
-        'value. This option is only applicable to the web app.'
+    "PIGPIOPort": [
+        "(Optional) These parameters configure remote GPIO access via PIOPIO"
     ],
-    'HTTPSPort': [
-        'This parameter will override the default port for HTTPS, which is',
-        '443. Uncomment and change this value to use a non-standard port for HTTPS'
+    "UseHttps": [
+        "This parameter, if true will enable the use of HTTPS",
+        "(secure HTTP) in the Flask web app or user name and password",
+        "authentication, depending on the options below. This option is only",
+        "applicable to the web app. This option requires python-openssl library",
+        "to be installed",
     ],
-    'RTS_Address': [
-        'Lowest identifier used by the tool to assign unique 24bit',
-        'ids for new remote. This value won\'t change in the config file, instead',
-        'the tool will look for the next available address that has not been',
-        'used yet.',
-        'If you are running more than one instance of PiSomfy you must ensure',
-        'each instance is set to a different value to avoid possible conflicts'
+    "HTTPPort": [
+        "(Optional) This parameter will allow the HTTP port to be set by the web",
+        "interface. The default is 80, but this setting will override that",
+        "value. This option is only applicable to the web app.",
     ],
-    'MQTT_Server': ['Location (IP Address of DNS Name) of the MQTT Server'],
-    'MQTT_Port': ['Port of the MQTT Server'],
-    'MQTT_User': ['Username for the MQTT Server'],
-    'MQTT_Password': ['Password of the MQTT Server'],
-    'MQTT_ClientID': [
-        'MQTT unique client identifier',
-        'If you are running more than one instance of PiSomfy you must ensure',
-        'each instance is set to a different value to avoid possible conflicts'
+    "HTTPSPort": [
+        "This parameter will override the default port for HTTPS, which is",
+        "443. Uncomment and change this value to use a non-standard port for HTTPS",
     ],
-    'EnableDiscovery': [
-        'If MQTT Discovery is enabled, simply add the folowing 2 lines to Home',
-        'Assistant\'s configuration.yaml file:',
-        '#',
-        'mqtt:',
-        '  discovery: true'
+    "RTS_Address": [
+        "Lowest identifier used by the tool to assign unique 24bit",
+        "ids for new remote. This value won't change in the config file, instead",
+        "the tool will look for the next available address that has not been",
+        "used yet.",
+        "If you are running more than one instance of PiSomfy you must ensure",
+        "each instance is set to a different value to avoid possible conflicts",
+    ],
+    "MQTT_Server": ["Location (IP Address of DNS Name) of the MQTT Server"],
+    "MQTT_Port": ["Port of the MQTT Server"],
+    "MQTT_User": ["Username for the MQTT Server"],
+    "MQTT_Password": ["Password of the MQTT Server"],
+    "MQTT_ClientID": [
+        "MQTT unique client identifier",
+        "If you are running more than one instance of PiSomfy you must ensure",
+        "each instance is set to a different value to avoid possible conflicts",
+    ],
+    "EnableDiscovery": [
+        "If MQTT Discovery is enabled, simply add the folowing 2 lines to Home",
+        "Assistant's configuration.yaml file:",
+        "#",
+        "mqtt:",
+        "  discovery: true",
     ],
 }
-
 
 
 class MyConfig:
@@ -131,6 +135,7 @@ class MyConfig:
     Handles loading and saving configuration data using TOML for general/MQTT
     settings and JSON for shutters/scheduler settings.
     """
+
     def __init__(self, filename: str = None, section: str = None):
         """Initialize configuration manager.
 
@@ -173,12 +178,12 @@ class MyConfig:
         self.Password = ""
 
         # File paths for new format
-        self.toml_path = Path(filename).with_suffix('.toml')
-        self.json_path = Path(filename).with_suffix('.json')
-        if (suffix := self.filepath.suffix) and suffix not in ('.toml', '.json'):
+        self.toml_path = Path(filename).with_suffix(".toml")
+        self.json_path = Path(filename).with_suffix(".json")
+        if (suffix := self.filepath.suffix) and suffix not in (".toml", ".json"):
             self.old_ini_path = self.filepath
         else:
-            self.old_ini_path = self.filepath.with_suffix('.conf')
+            self.old_ini_path = self.filepath.with_suffix(".conf")
 
         self.InitComplete = True
 
@@ -189,67 +194,104 @@ class MyConfig:
         return old_ini_exists and not new_toml_exists
 
     def _load_legacy_config(self, legacy_config_filename: str):
-
         config = RawConfigParser()
         config.read(legacy_config_filename)
 
-        for section, params in [("General", GENERAL_PARAMETERS), ("MQTT", MQQT_PARAMETERS)]:
+        for section, params in [
+            ("General", GENERAL_PARAMETERS),
+            ("MQTT", MQQT_PARAMETERS),
+        ]:
             for key, type in params.items():
                 try:
                     if config.has_option(section, key):
                         val = self.read_value(config, section, key, return_type=type)
                         setattr(self, key, val)
                 except Exception as e1:
-                    LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
+                    LOGGER.exception(
+                        f"Missing config file or config file entries in Section {section} for key {key}: {e1}"
+                    )
                     return False
-
 
         shutters = config.items("Shutters")
         for key, value in shutters:
             try:
-                name, active, down_duration = value.split(",",2)
+                name, active, down_duration = value.split(",", 2)
                 down_duration, _, up_duration = down_duration.partition(",")
-                name, active, down_duration, up_duration = (s.strip() for s in (name, active, down_duration, up_duration))
+                name, active, down_duration, up_duration = (
+                    s.strip() for s in (name, active, down_duration, up_duration)
+                )
 
-                if active.lower() == 'true':
-                   if not down_duration:
-                       down_duration ="10"
-                   elif int(down_duration) <= 0 or int(down_duration) >= 100:
-                       down_duration = "10"
-                   param2 = self.read_value(config, "ShutterRollingCodes",key, return_type=int)
-                   intermediate_pos = None
-                   if config.has_option("ShutterIntermediatePositions", key):
-                       intermediate_pos = self.read_value(config, "ShutterIntermediatePositions", key, return_type=str)
-                       try:
-                           intermediate_pos = int(intermediate_pos)
-                       except Exception:
-                           intermediate_pos = None
-                   if (intermediate_pos != None) and ((intermediate_pos < 0) or (intermediate_pos > 100)):
-                       intermediate_pos  = None
-                   # If only one duration is specified, use it for both down and up durations.
-                   if not up_duration:
-                      up_duration = down_duration
-                   self.shutters[key] = {'name': name, 'active': True, 'code': param2, 'durationDown': int(down_duration), 'durationUp': int(up_duration), 'intermediatePosition': intermediate_pos}
-                   self.shutters_by_name[name] = key
+                if active.lower() == "true":
+                    if not down_duration:
+                        down_duration = "10"
+                    elif int(down_duration) <= 0 or int(down_duration) >= 100:
+                        down_duration = "10"
+                    param2 = self.read_value(
+                        config, "ShutterRollingCodes", key, return_type=int
+                    )
+                    intermediate_pos = None
+                    if config.has_option("ShutterIntermediatePositions", key):
+                        intermediate_pos = self.read_value(
+                            config, "ShutterIntermediatePositions", key, return_type=str
+                        )
+                        try:
+                            intermediate_pos = int(intermediate_pos)
+                        except Exception:
+                            intermediate_pos = None
+                    if (intermediate_pos != None) and (
+                        (intermediate_pos < 0) or (intermediate_pos > 100)
+                    ):
+                        intermediate_pos = None
+                    # If only one duration is specified, use it for both down and up durations.
+                    if not up_duration:
+                        up_duration = down_duration
+                    self.shutters[key] = {
+                        "name": name,
+                        "active": True,
+                        "code": param2,
+                        "durationDown": int(down_duration),
+                        "durationUp": int(up_duration),
+                        "intermediatePosition": intermediate_pos,
+                    }
+                    self.shutters_by_name[name] = key
             except Exception as e1:
-                LOGGER.exception("Missing config file or config file entries in Section Shutters for key "+key+": " + str(e1))
+                LOGGER.exception(
+                    "Missing config file or config file entries in Section Shutters for key "
+                    + key
+                    + ": "
+                    + str(e1)
+                )
                 return False
 
         schedules = config.items("Scheduler")
         for key, value in schedules:
             try:
                 param = value.split(",")
-                if param[0].strip().lower() in ('active', 'paused'):
-                   self.schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2].split("|"), 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
+                if param[0].strip().lower() in ("active", "paused"):
+                    self.schedule[key] = {
+                        "active": param[0],
+                        "repeatType": param[1],
+                        "repeatValue": param[2].split("|"),
+                        "timeType": param[3],
+                        "timeValue": param[4],
+                        "shutterAction": param[5],
+                        "shutterIds": param[6].split("|"),
+                    }
             except Exception as e1:
-                LOGGER.exception("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
+                LOGGER.exception(
+                    "Missing config file or config file entries in Section Scheduler for key "
+                    + key
+                    + ": "
+                    + str(e1)
+                )
                 return False
 
         return True
 
-    #---------------------MyConfig::ReadValue-----------------------------------
-    def read_value(self, config: RawConfigParser, section: str, key: str, return_type: type):
-
+    # ---------------------MyConfig::ReadValue-----------------------------------
+    def read_value(
+        self, config: RawConfigParser, section: str, key: str, return_type: type
+    ):
         if return_type == bool:
             return config.getboolean(section, key)
         if return_type == float:
@@ -257,7 +299,6 @@ class MyConfig:
         if return_type == int:
             return config.getint(section, key)
         return config.get(section, key)
-
 
     def _migrate_from_ini(self):
         """Migrate configuration from old INI format to new TOML/JSON format."""
@@ -268,16 +309,13 @@ class MyConfig:
         doc = self._create_new_toml()
         toml_dump = dumps(doc)
 
-        shutters_schedule_dump = {
-            "shutters": self.shutters,
-            "schedule": self.schedule
-        }
+        shutters_schedule_dump = {"shutters": self.shutters, "schedule": self.schedule}
 
         # Write new format files
         with self.CriticalLock:
-            with open(self.toml_path, 'w') as f:
+            with open(self.toml_path, "w") as f:
                 f.write(toml_dump)
-            with open(self.json_path, 'w') as f:
+            with open(self.json_path, "w") as f:
                 json.dump(shutters_schedule_dump, f, indent=2)
 
         LOGGER.info("Migrated old INI configuration to new TOML/JSON format")
@@ -288,7 +326,10 @@ class MyConfig:
         doc.add(comment("Pi-Somfy Configuration File."))
         doc.add(nl())
 
-        for tablename, params in [("general", GENERAL_PARAMETERS), ("mqtt", MQQT_PARAMETERS)]:
+        for tablename, params in [
+            ("general", GENERAL_PARAMETERS),
+            ("mqtt", MQQT_PARAMETERS),
+        ]:
             ttable = table()
             for key, type_ in params.items():
                 if comments := CONFIG_COMMENTS.get(key):
@@ -301,31 +342,34 @@ class MyConfig:
             doc.add(nl())
         return doc
 
-
     def _load_new_format(self):
         """Load configuration from new TOML and JSON files."""
         # Load TOML for General and MQTT
-        with open(self.toml_path, 'r') as f:
+        with open(self.toml_path, "r") as f:
             toml_string = f.read()
         toml = parse(toml_string)
 
-        for section, params in [("general", GENERAL_PARAMETERS), ("mqtt", MQQT_PARAMETERS)]:
+        for section, params in [
+            ("general", GENERAL_PARAMETERS),
+            ("mqtt", MQQT_PARAMETERS),
+        ]:
             for key in params:
                 try:
                     if val := toml[section].get(key):
                         setattr(self, key, val)
                 except Exception as e1:
-                    LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
+                    LOGGER.exception(
+                        f"Missing config file or config file entries in Section {section} for key {key}: {e1}"
+                    )
                     return False
 
         # Load Shutters from JSON
         if self.json_path.exists():
-            with open(self.json_path, 'r') as f:
-                json_dict =  json.load(f)
-            self.shutters = json_dict['shutters']
-            self.shutters_by_name = {v['name']: k for k, v in self.shutters.items()}
-            self.schedule = json_dict['schedule']
-
+            with open(self.json_path, "r") as f:
+                json_dict = json.load(f)
+            self.shutters = json_dict["shutters"]
+            self.shutters_by_name = {v["name"]: k for k, v in self.shutters.items()}
+            self.schedule = json_dict["schedule"]
 
     def load_config(self) -> bool:
         """Load configuration data.
@@ -352,13 +396,13 @@ class MyConfig:
             lng: Longitude value
         """
         with self.CriticalLock:
-            with open(self.toml_path, 'r') as f:
+            with open(self.toml_path, "r") as f:
                 toml_string = f.read()
             toml = parse(toml_string)
-            toml['general']['Latitude'] = lat
-            toml['general']['Longitude'] = lng
+            toml["general"]["Latitude"] = lat
+            toml["general"]["Longitude"] = lng
             toml_dump = dumps(toml)
-            with open(self.toml_path, 'w') as f:
+            with open(self.toml_path, "w") as f:
                 f.write(toml_dump)
         self.Latitude = lat
         self.Longitude = lng
@@ -371,10 +415,10 @@ class MyConfig:
             code: New rolling code value
         """
         with self.CriticalLock:
-            with open(self.json_path, 'r') as f:
+            with open(self.json_path, "r") as f:
                 json_dict = json.load(f)
-            json_dict['shutters'][shutter_id]['code'] = code
-            with open(self.json_path, 'w') as f:
+            json_dict["shutters"][shutter_id]["code"] = code
+            with open(self.json_path, "w") as f:
                 json.dump(json_dict, f, indent=2)
 
     def set_shutter(self, shutter_id: str, name: str, duration: str):
@@ -387,18 +431,17 @@ class MyConfig:
         """
         if (shutter := self.shutters.get(shutter_id)) is None:
             raise ValueError(f"Shutter {shutter_id} does not exist")
-        original_name = shutter['name']
+        original_name = shutter["name"]
 
-        shutter['name'] = name
-        shutter['durationUp'] = int(duration)
-        shutter['durationDown'] = int(duration)
+        shutter["name"] = name
+        shutter["durationUp"] = int(duration)
+        shutter["durationDown"] = int(duration)
 
         with self.json_config() as json_dict:
-            json_dict['shutters'][shutter_id] = shutter
+            json_dict["shutters"][shutter_id] = shutter
 
-        self.shutters_by_name.pop('original_name', None)
+        self.shutters_by_name.pop("original_name", None)
         self.shutters_by_name[name] = shutter
-
 
     def add_shutter(self, name: str, duration: str):
         """Set shutter name and duration and save to config.
@@ -411,7 +454,7 @@ class MyConfig:
         tmp_id = int(self.RTS_Address, 16)
         conflict = True
         while conflict == True:
-            tmp_id = tmp_id+1
+            tmp_id = tmp_id + 1
             conflict = False
             for key in self.shutters:
                 if tmp_id == int(key, 16):
@@ -424,12 +467,12 @@ class MyConfig:
             "durationUp": int(duration),
             "durationDown": int(duration),
             "active": True,
-            "intermediatePosition": None
+            "intermediatePosition": None,
         }
         with self.json_config() as json_dict:
-            if shutter_id in json_dict['shutters']:
+            if shutter_id in json_dict["shutters"]:
                 raise ValueError(f"Shutter {shutter_id} already exists")
-            json_dict['shutters'][shutter_id] = shutter
+            json_dict["shutters"][shutter_id] = shutter
 
         self.shutters_by_name[name] = shutter_id
         self.shutters[shutter_id] = shutter
@@ -438,12 +481,12 @@ class MyConfig:
     def json_config(self):
         # Code to acquire resource, e.g.:
         with self.CriticalLock:
-            with open(self.json_path, 'r') as f:
+            with open(self.json_path, "r") as f:
                 json_dict = json.load(f)
         try:
             yield json_dict
         finally:
-            with open(self.json_path, 'w') as f:
+            with open(self.json_path, "w") as f:
                 json.dump(json_dict, f, indent=2)
 
     def set_shutter_active(self, shutter_id: str, active: bool):
@@ -454,13 +497,23 @@ class MyConfig:
             active: Shutter active status
         """
         with self.json_config() as json_dict:
-            json_dict['shutters'][shutter_id]['active'] = active
+            json_dict["shutters"][shutter_id]["active"] = active
 
         if not active:
-            self.shutters_by_name.pop(self.shutters[shutter_id]['name'], None)
+            self.shutters_by_name.pop(self.shutters[shutter_id]["name"], None)
             self.shutters.pop(shutter_id, None)
 
-    def set_schedule(self, schedule_id: str, active: bool, repeat_type: str, repeat_value: str, time_type: str, time_value: str, shutter_action: str, shutter_ids: str):
+    def set_schedule(
+        self,
+        schedule_id: str,
+        active: bool,
+        repeat_type: str,
+        repeat_value: str,
+        time_type: str,
+        time_value: str,
+        shutter_action: str,
+        shutter_ids: str,
+    ):
         """Set schedule and save to config.
 
         Args:
@@ -474,25 +527,25 @@ class MyConfig:
             shutter_ids: Schedule shutter identifiers
         """
         with self.CriticalLock:
-            with open(self.json_path, 'r') as f:
+            with open(self.json_path, "r") as f:
                 json_dict = json.load(f)
-            json_dict['schedule'][schedule_id] = {
-                'active': active,
-                'repeatType': repeat_type,
-                'repeatValue': repeat_value,
-                'timeType': time_type,
-                'timeValue': time_value,
-                'shutterAction': shutter_action,
-                'shutterIds': shutter_ids
+            json_dict["schedule"][schedule_id] = {
+                "active": active,
+                "repeatType": repeat_type,
+                "repeatValue": repeat_value,
+                "timeType": time_type,
+                "timeValue": time_value,
+                "shutterAction": shutter_action,
+                "shutterIds": shutter_ids,
             }
-            with open(self.json_path, 'w') as f:
+            with open(self.json_path, "w") as f:
                 json.dump(json_dict, f, indent=2)
         self.schedule[schedule_id] = {
-            'active': active,
-            'repeatType': repeat_type,
-            'repeatValue': repeat_value,
-            'timeType': time_type,
-            'timeValue': time_value,
-            'shutterAction': shutter_action,
-            'shutterIds': shutter_ids
+            "active": active,
+            "repeatType": repeat_type,
+            "repeatValue": repeat_value,
+            "timeType": time_type,
+            "timeValue": time_value,
+            "shutterAction": shutter_action,
+            "shutterIds": shutter_ids,
         }

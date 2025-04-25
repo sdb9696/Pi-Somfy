@@ -12,9 +12,14 @@ def test_cli_services():
         pass
 
     with runner.isolated_filesystem():
-        with patch('pi_somfy.operate_shutters.OperateShutters.loop_until_complete', return_value=None) as mock_loop_until_complete:
+        with patch(
+            "pi_somfy.operate_shutters.OperateShutters.loop_until_complete",
+            return_value=None,
+        ) as mock_loop_until_complete:
             res = runner.invoke(
-                cli, ["--auto", "--echo", "--mqtt"], catch_exceptions=False,
+                cli,
+                ["--auto", "--echo", "--mqtt"],
+                catch_exceptions=False,
             )
 
         web_server_msg = "Starting WebServer on Port 8080"
@@ -26,12 +31,23 @@ def test_cli_services():
         assert mqtt_msg in res.output
         assert alexa_msg in res.output
 
+
 def test_cli_press():
     runner = CliRunner()
 
     with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
         res = runner.invoke(
-            cli, ["TestShutter", "--press", "up", "--press", "down", "--config", "config/test_config.toml"], catch_exceptions=False,
+            cli,
+            [
+                "TestShutter",
+                "--press",
+                "up",
+                "--press",
+                "down",
+                "--config",
+                "config/test_config.toml",
+            ],
+            catch_exceptions=False,
         )
 
     web_server_msg = "Starting WebServer on Port 8080"
@@ -41,11 +57,11 @@ def test_cli_press():
     button_val = Shutter.BUTTON_UP | Shutter.BUTTON_DOWN
     button_msg = f"(TestShutter)\nButton  :       0x{button_val:02X}"
 
-
     assert web_server_msg not in res.output
     assert mqtt_msg not in res.output
     assert alexa_msg not in res.output
     assert button_msg in res.output
+
 
 def test_cli_config_migration():
     """Test that config migration works correctly with a cleaned config file."""
@@ -92,9 +108,18 @@ EnableDiscovery=true
 
             # Run the CLI with the cleaned config
             res = runner.invoke(
-                cli, ["TestShutter", "--press", "up", "--press", "down", "--config", "test_cleaned.conf"], catch_exceptions=False,
+                cli,
+                [
+                    "TestShutter",
+                    "--press",
+                    "up",
+                    "--press",
+                    "down",
+                    "--config",
+                    "test_cleaned.conf",
+                ],
+                catch_exceptions=False,
             )
-
 
             # Check that new format files were created
             assert Path("test_cleaned.toml").exists()
@@ -104,14 +129,12 @@ EnableDiscovery=true
             with open("test_cleaned.toml", "r") as f:
                 toml_content = f.read()
 
-
             with open("test_cleaned.json", "r") as f:
                 json_content = f.read()
 
-
     assert "general" in toml_content
     assert "mqtt" in toml_content
-    assert ("Latitude=51.4769" in toml_content.replace(" ", ""))
+    assert "Latitude=51.4769" in toml_content.replace(" ", "")
     assert "shutters" in json_content
     assert "schedule" in json_content
     assert "TestShutter" in json_content

@@ -5,14 +5,14 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
-def create_pigpio_connection(
-        pigpiohost = os.getenv("PIGPIO_ADDR", 'localhost'),
-        pigpioport = os.getenv("PIGPIO_PORT", 8888),
-        show_errors = True,
-        *,
-        timeout=None
-    ):
 
+def create_pigpio_connection(
+    pigpiohost=os.getenv("PIGPIO_ADDR", "localhost"),
+    pigpioport=os.getenv("PIGPIO_PORT", 8888),
+    show_errors=True,
+    *,
+    timeout=None,
+):
     if timeout is None:
         return pigpio.pi(pigpiohost, pigpioport, show_errors)
 
@@ -33,6 +33,8 @@ def create_pigpio_connection(
 
     if pi_thread.is_alive():
         pi_thread.join(0)  # Force termination if still running
-        raise TimeoutError(f"Connection to pigpiod at {pigpiohost}:{pigpioport} timed out after {timeout} seconds.")
+        raise TimeoutError(
+            f"Connection to pigpiod at {pigpiohost}:{pigpioport} timed out after {timeout} seconds."
+        )
 
     return pi_thread.pi
