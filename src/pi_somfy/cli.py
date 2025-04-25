@@ -135,10 +135,10 @@ def cli(
     for manual control, scheduling, and integration with external services like Alexa and MQTT.
     """
     path = Path(config_location)
-    if path.is_dir():
-        filename_no_ext = Path(config_location) / "operateShutters"
-    else:
+    if path.is_file():
         filename_no_ext = path.parent / path.stem
+    else:
+        filename_no_ext = Path(config_location) / "operateShutters"
 
     config = MyConfig(filename=filename_no_ext)
     result = config.load_config()

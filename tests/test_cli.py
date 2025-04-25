@@ -45,7 +45,7 @@ def test_cli_press():
                 "--press",
                 "down",
                 "--config",
-                "config/test_config.toml",
+                "tests/config",
             ],
             catch_exceptions=False,
         )
