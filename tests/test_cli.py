@@ -1,7 +1,7 @@
 import pytest
 from click.testing import CliRunner
 from pi_somfy.cli import cli
-from pi_somfy.operateShutters import Shutter
+from pi_somfy.operate_shutters import Shutter
 from unittest.mock import patch, Mock
 from pathlib import Path
 
@@ -13,7 +13,7 @@ def test_cli_services():
         pass
 
     with runner.isolated_filesystem():
-        with patch('pi_somfy.operateShutters.operateShutters.LoopUntilComplete', return_value=None) as mock_loop_until_complete:
+        with patch('pi_somfy.operate_shutters.OperateShutters.loop_until_complete', return_value=None) as mock_loop_until_complete:
             res = runner.invoke(
                 cli, ["--auto", "--echo", "--mqtt"], catch_exceptions=False,
             )
@@ -39,7 +39,7 @@ def test_cli_press():
     mqtt_msg = "Entering MQTT polling loop"
     alexa_msg = "Entering fauxmo polling loop"
 
-    button_val = Shutter.buttonUp | Shutter.buttonDown
+    button_val = Shutter.BUTTON_UP | Shutter.BUTTON_DOWN
     button_msg = f"(TestShutter)\nButton  :       0x{button_val:02X}"
 
 

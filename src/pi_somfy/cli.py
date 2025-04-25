@@ -9,8 +9,8 @@ import click
 import os
 import getpass
 from pathlib import Path
-from .operateShutters import operateShutters, Args
-from .myconfig import MyConfig
+from .operate_shutters import OperateShutters, Args
+from .config import MyConfig
 from logging.handlers import RotatingFileHandler
 
 def setup_logger(log_file, level=logging.DEBUG, stream=False):
@@ -140,7 +140,7 @@ def cli(
         filename_no_ext = path.parent / path.stem
 
     config = MyConfig(filename=filename_no_ext)
-    result =config.LoadConfig()
+    result = config.load_config()
     if not result:
         click.error("Failure to load configuration parameters")    
     
@@ -162,12 +162,12 @@ def cli(
         mqtt=mqtt
     )
     # Start things up
-    my_shutter = operateShutters(config=config, args=args)
+    my_shutter = OperateShutters(config=config, args=args)
 
     try:
-        my_shutter.LoopUntilComplete()
+        my_shutter.loop_until_complete()
 
-        my_shutter.Close();
+        my_shutter.close()
 
     except Exception:
         sys.exit(1)

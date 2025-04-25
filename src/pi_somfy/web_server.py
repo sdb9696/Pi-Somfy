@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 import logging
 import threading
-from .myconfig import MyConfig
+import re
+from .config import MyConfig
 try:
     from flask import Flask, render_template, request, Response, jsonify, json
 except Exception as e1:
@@ -12,6 +13,9 @@ except Exception as e1:
 import sys, signal, os, socket, atexit, time, subprocess, threading, signal, errno, collections, traceback
 
 LOGGER = logging.getLogger(__name__)
+
+def camel_to_snake(name):
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
 
 class EndpointAction():
 
@@ -42,9 +46,9 @@ class FlaskAppWrapper(threading.Thread):
         
         self.app = Flask(import_name=name, static_url_path="", static_folder=static_url_path)
         self.app.after_request(self.add_header)
-        self.add_endpoint(endpoint='/', endpoint_name='main', handler=self.requestMain)
+        self.add_endpoint(endpoint='/', endpoint_name='main', handler=self.request_main)
         self.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=self.shutdown_server)
-        self.add_endpoint(endpoint='/cmd/<command>', endpoint_name='cmd', handler=self.processCommand, methods=['GET', 'POST'])
+        self.add_endpoint(endpoint='/cmd/<command>', endpoint_name='cmd', handler=self.process_command, methods=['GET', 'POST'])
         
     def isfloat(self, value):
         try:
@@ -63,13 +67,13 @@ class FlaskAppWrapper(threading.Thread):
     def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, methods=['GET']):
         self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler), methods=methods)
 
-    def requestMain(self):
-        if not self.validatePassword(header=False):
+    def request_main(self):
+        if not self.validate_password(header=False):
             return self.app.send_static_file("error.html")
         LOGGER.debug(request.url)
         return self.app.send_static_file('index.html')
         
-    def processCommand(self, *args, **kwargs):
+    def process_command(self, *args, **kwargs):
         LOGGER.debug(request.url + " ( "+ request.method + " ): "+ str(args) + " | "+ str(kwargs))
         try:
             # LOGGER.debug(request.values.get('sitename', 0, type=str))
@@ -78,7 +82,8 @@ class FlaskAppWrapper(threading.Thread):
             command = args[1]['command']
             if command in ["up", "down", "stop", "program", "press", "getConfig", "addSchedule", "editSchedule", "deleteSchedule", "addShutter", "editShutter", "deleteShutter", "setLocation" ]:
                 LOGGER.info("processing Command \"" + command + "\" with parameters: "+str(request.values))
-                result = getattr(self, command)(request.values)
+                snake_command = camel_to_snake(command)
+                result = getattr(self, snake_command)(request.values)
                 return Response(json.dumps(result), status=200)
             else:
                 LOGGER.warning("UNKNOWN COMMAND " + command)
@@ -89,7 +94,7 @@ class FlaskAppWrapper(threading.Thread):
             LOGGER.error(tb)
             return Response("Error: Exception occured", status=400)
 
-    def validatePassword(self, header=True):
+    def validate_password(self, header=True):
         # If no password configured, it's OK
         if self.config.Password == "":
             return True
@@ -115,31 +120,31 @@ class FlaskAppWrapper(threading.Thread):
         return Response("Shutting Down", status=400)
         
     def up(self, params):
-        if not self.validatePassword():
+        if not self.validate_password():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("rise shutter \""+shutter+"\"")
-        if (not shutter in self.config.Shutters):
+        if (not shutter in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.rise(shutter)
         return {'status': 'OK'}
 
     def down(self, params):
-        if not self.validatePassword():
+        if not self.validate_password():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("lower shutter \""+shutter+"\"")
-        if (not shutter in self.config.Shutters):
+        if (not shutter in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.lower(shutter)
         return {'status': 'OK'}
 
     def stop(self, params):
-        if not self.validatePassword():
+        if not self.validate_password():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("stop shutter \""+shutter+"\"")
-        if (not shutter in self.config.Shutters):
+        if (not shutter in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.stop(shutter)
         return {'status': 'OK'}
@@ -147,7 +152,7 @@ class FlaskAppWrapper(threading.Thread):
     def program(self, params):
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("program shutter \""+shutter+"\"")
-        if (not shutter in self.config.Shutters):
+        if (not shutter in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.program(shutter)
         return {'status': 'OK'}
@@ -155,20 +160,20 @@ class FlaskAppWrapper(threading.Thread):
     def press(self, params):
         shutter=params.get('shutter', 0, type=str)
         buttons = params.get('buttons', 0, type=int)
-        longPress = params.get('longPress', 0, type=str) == "true"
-        LOGGER.debug(("long" if longPress else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
-        if (not shutter in self.config.Shutters):
+        long_press = params.get('longPress', 0, type=str) == "true"
+        LOGGER.debug(("long" if long_press else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
+        if (not shutter in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
-        self.shutter.pressButtons(shutter, buttons, longPress)
+        self.shutter.press_buttons(shutter, buttons, long_press)
         return {'status': 'OK'}
 
-    def setLocation(self, params):
+    def set_location(self, params):
         LOGGER.debug("set Location: "+params.get('lat', 0, type=str)+" / "+params.get('lng', 0, type=str))
-        self.config.setLocation(params.get('lat', 0, type=str), params.get('lng', 0, type=str))
-        self.schedule.setUpdateTime()
+        self.config.set_location(params.get('lat', 0, type=str), params.get('lng', 0, type=str))
+        self.schedule.set_update_time()
         return {'status': 'OK'}
 
-    def addShutter(self, params):
+    def add_shutter(self, params):
         if sys.version_info[0] < 3:
             import unicodedata
             name = params.get('name', 0, type=unicode)
@@ -179,19 +184,19 @@ class FlaskAppWrapper(threading.Thread):
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
         LOGGER.debug("add shutter: "+ name)
-        if (name in self.config.ShuttersByName):
+        if (name in self.config.shutters_by_name):
             return {'status': 'ERROR', 'message': 'Name is not unique'}
         elif ("," in name):
             return {'status': 'ERROR', 'message': 'New name can not contain SPACES or COMMAS'}
         elif not self.isfloat(duration):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
-            self.config.addShutter(name, duration)
-            id = self.config.ShuttersByName[name]
+            self.config.add_shutter(name, duration)
+            id = self.config.shutters_by_name[name]
             LOGGER.debug("got a new shutter id: "+str(id))
             return {'status': 'OK', 'id': str(id)}
 
-    def editShutter(self, params):
+    def edit_shutter(self, params):
         id = params.get('id', 0, type=str)
         if sys.version_info[0] < 3:
             import unicodedata
@@ -203,52 +208,52 @@ class FlaskAppWrapper(threading.Thread):
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
         LOGGER.debug("edit shutter: "+id+" / "+name)
-        if (not id in self.config.Shutters):
+        if (not id in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
-        elif ((name == self.config.Shutters[id]['name']) and (duration == self.config.Shutters[id]['durationDown'])):
+        elif ((name == self.config.shutters[id]['name']) and (duration == self.config.shutters[id]['durationDown'])):
             return {'status': 'ERROR', 'message': 'Neither Name nor Duration has not changed, remaining the same.'}
-        elif ((name != self.config.Shutters[id]['name']) and (name in self.config.ShuttersByName)):
+        elif ((name != self.config.shutters[id]['name']) and (name in self.config.shutters_by_name)):
             return {'status': 'ERROR', 'message': 'Name is not unique'}
         elif ("," in name):
             return {'status': 'ERROR', 'message': 'New name can not contain COMMAS'}
         elif not self.isfloat(duration):
             return {'status': 'ERROR', 'message': 'seconds must be a number (may contain decimals)'}
         else:
-            self.config.setShutter(id, name, duration)
+            self.config.set_shutter(id, name, duration)
 
             return {'status': 'OK'}
 
-    def deleteShutter(self, params):
+    def delete_shutter(self, params):
         id = params.get('id', 0, type=str)
         LOGGER.debug("delete shutter: "+id)
-        if (not id in self.config.Shutters):
+        if (not id in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         else:
-            self.config.setShutterActive(id, False)
+            self.config.set_shutter_active(id, False)
             return {'status': 'OK'}
 
-    def addSchedule(self, params):
-        if not self.validatePassword():
+    def add_schedule(self, params):
+        if not self.validate_password():
             return {'status': 'ERROR', 'message': 'Invalid password'}
 
         try:
-            active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds = self._get_schedule_params(params)
+            active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids = self._get_schedule_params(params)
         except ValueError as e:
             return {'status': 'ERROR', 'message': str(e)}
 
         LOGGER.debug("create new schedule")
-        return self.schedule.addSchedule(
+        return self.schedule.add_schedule(
             active,
-            repeatType,
-            repeatValue,
-            timeType,
-            timeValue,
-            shutterAction,
-            shutterIds,
+            repeat_type,
+            repeat_value,
+            time_type,
+            time_value,
+            shutter_action,
+            shutter_ids,
         )
 
-    def editSchedule(self, params):
-        if not self.validatePassword():
+    def edit_schedule(self, params):
+        if not self.validate_password():
             return {'status': 'ERROR', 'message': 'Invalid password'}
 
         id = params.get('id', type=str)
@@ -256,12 +261,12 @@ class FlaskAppWrapper(threading.Thread):
             return {'status': 'ERROR', 'message': 'Schedule ID is required'}
         
         try:
-            active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds = self._get_schedule_params(params)
+            active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids = self._get_schedule_params(params)
         except ValueError as e:
             return {'status': 'ERROR', 'message': str(e)}
 
         LOGGER.debug("change schedule: "+id)
-        return self.schedule.editSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
+        return self.schedule.edit_schedule(id, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
 
     def _get_schedule_params(self, params):
         param_values = {key: params.get(key) for key in ['active', 'repeatType', 'repeatValue', 'timeType', 'timeValue', 'shutterAction', 'shutterIds']}
@@ -274,18 +279,18 @@ class FlaskAppWrapper(threading.Thread):
         
         return (param_value for param_value in param_values.values())
     
-    def deleteSchedule(self, params):
+    def delete_schedule(self, params):
         id = params.get('id', 0, type=str)
         LOGGER.debug("delete schedule: "+id)
-        return self.schedule.deleteSchedule(id);
+        return self.schedule.delete_schedule(id)
 
-    def getConfig(self, params):
+    def get_config(self, params):
         shutters = {}
         durations = {}
-        for k in self.config.Shutters:
-            shutters[k] = self.config.Shutters[k]['name']  
-            durations[k] = self.config.Shutters[k]['durationDown']            
-        obj = {'Latitude': self.config.Latitude, 'Longitude': self.config.Longitude, 'Shutters': shutters, 'ShutterDurations': durations, 'Schedule': self.schedule.getScheduleAsDict()}
+        for k in self.config.shutters:
+            shutters[k] = self.config.shutters[k]['name']
+            durations[k] = self.config.shutters[k]['durationDown']
+        obj = {'Latitude': self.config.Latitude, 'Longitude': self.config.Longitude, 'Shutters': shutters, 'ShutterDurations': durations, 'Schedule': self.schedule.get_schedule_as_dict()}
         LOGGER.debug("getConfig called, sending: "+json.dumps(obj))
         return obj
 

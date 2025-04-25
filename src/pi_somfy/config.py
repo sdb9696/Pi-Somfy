@@ -167,9 +167,9 @@ class MyConfig:
         self.MQTT_Port = 1883
         self.MQTT_User = "xxxxxxx"
         self.EnableDiscovery = True
-        self.Shutters = {}
-        self.ShuttersByName = {}
-        self.Schedule = {}
+        self.shutters = {}
+        self.shutters_by_name = {}
+        self.schedule = {}
         self.Password = ""
 
         # File paths for new format
@@ -197,7 +197,7 @@ class MyConfig:
             for key, type in params.items():
                 try:
                     if config.has_option(section, key):
-                        val = self.ReadValue(config, section, key, return_type=type)
+                        val = self.read_value(config, section, key, return_type=type)
                         setattr(self, key, val)
                 except Exception as e1:
                     LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
@@ -216,10 +216,10 @@ class MyConfig:
                        down_duration ="10";
                    elif int(down_duration) <= 0 or int(down_duration) >= 100:
                        down_duration = "10"
-                   param2 = self.ReadValue(config, "ShutterRollingCodes",key, return_type=int)
+                   param2 = self.read_value(config, "ShutterRollingCodes",key, return_type=int)
                    intermediate_pos = None
                    if config.has_option("ShutterIntermediatePositions", key):
-                       intermediate_pos = self.ReadValue(config, "ShutterIntermediatePositions", key, return_type=str)
+                       intermediate_pos = self.read_value(config, "ShutterIntermediatePositions", key, return_type=str)
                        try:
                            intermediate_pos = int(intermediate_pos)
                        except Exception:
@@ -229,8 +229,8 @@ class MyConfig:
                    # If only one duration is specified, use it for both down and up durations.
                    if not up_duration:
                       up_duration = down_duration
-                   self.Shutters[key] = {'name': name, 'active': True, 'code': param2, 'durationDown': int(down_duration), 'durationUp': int(up_duration), 'intermediatePosition': intermediate_pos}
-                   self.ShuttersByName[name] = key
+                   self.shutters[key] = {'name': name, 'active': True, 'code': param2, 'durationDown': int(down_duration), 'durationUp': int(up_duration), 'intermediatePosition': intermediate_pos}
+                   self.shutters_by_name[name] = key
             except Exception as e1:
                 LOGGER.exception("Missing config file or config file entries in Section Shutters for key "+key+": " + str(e1))
                 return False
@@ -240,7 +240,7 @@ class MyConfig:
             try:
                 param = value.split(",")
                 if param[0].strip().lower() in ('active', 'paused'):
-                   self.Schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2].split("|"), 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
+                   self.schedule[key] = {'active': param[0], 'repeatType': param[1], 'repeatValue': param[2].split("|"), 'timeType': param[3], 'timeValue': param[4], 'shutterAction': param[5], 'shutterIds': param[6].split("|")}
             except Exception as e1:
                 LOGGER.exception("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
                 return False
@@ -248,7 +248,7 @@ class MyConfig:
         return True
 
     #---------------------MyConfig::ReadValue-----------------------------------
-    def ReadValue(self, config: RawConfigParser, section: str, key: str, return_type: type):
+    def read_value(self, config: RawConfigParser, section: str, key: str, return_type: type):
 
         if return_type == bool:
             return config.getboolean(section, key)
@@ -269,8 +269,8 @@ class MyConfig:
         toml_dump = dumps(doc)
         
         shutters_schedule_dump = {
-            "shutters": self.Shutters,
-            "schedule": self.Schedule
+            "shutters": self.shutters,
+            "schedule": self.schedule
         }
 
         # Write new format files
@@ -322,12 +322,12 @@ class MyConfig:
         if self.json_path.exists():
             with open(self.json_path, 'r') as f:
                 json_dict =  json.load(f)
-            self.Shutters = json_dict['shutters']
-            self.ShuttersByName = {v['name']: k for k, v in self.Shutters.items()}
-            self.Schedule = json_dict['schedule']
+            self.shutters = json_dict['shutters']
+            self.shutters_by_name = {v['name']: k for k, v in self.shutters.items()}
+            self.schedule = json_dict['schedule']
 
 
-    def LoadConfig(self) -> bool:
+    def load_config(self) -> bool:
         """Load configuration data.
 
         Returns:
@@ -344,7 +344,7 @@ class MyConfig:
             LOGGER.exception(f"Error loading config: {str(e)}")
             return False
                                    
-    def setLocation(self, lat: float, lng: float):
+    def set_location(self, lat: float, lng: float):
         """Set location coordinates and save to config.
 
         Args:
@@ -363,30 +363,30 @@ class MyConfig:
         self.Latitude = lat
         self.Longitude = lng
 
-    def setShutterCode(self, shutterId: str, code: int):
+    def set_shutter_code(self, shutter_id: str, code: int):
         """Set rolling code for a shutter and save to config.
 
         Args:
-            shutterId: Shutter identifier
+            shutter_id: Shutter identifier
             code: New rolling code value
         """
         with self.CriticalLock:
             with open(self.json_path, 'r') as f:
                 json_dict = json.load(f)
-            json_dict['shutters'][shutterId]['code'] = code
+            json_dict['shutters'][shutter_id]['code'] = code
             with open(self.json_path, 'w') as f:
                 json.dump(json_dict, f, indent=2)
         
-    def setShutter(self, shutterId: str, name: str, duration: str):
+    def set_shutter(self, shutter_id: str, name: str, duration: str):
         """Set shutter name and duration and save to config.
 
         Args:
-            shutterId: Shutter identifier
+            shutter_id: Shutter identifier
             name: Shutter name
             duration: Shutter duration
         """
-        if (shutter := self.Shutters.get(shutterId)) is None:
-            raise ValueError(f"Shutter {shutterId} does not exist")
+        if (shutter := self.shutters.get(shutter_id)) is None:
+            raise ValueError(f"Shutter {shutter_id} does not exist")
         original_name = shutter['name']
 
         shutter['name'] = name
@@ -394,17 +394,17 @@ class MyConfig:
         shutter['durationDown'] = int(duration)
 
         with self.json_config() as json_dict:
-            json_dict['shutters'][shutterId] = shutter
+            json_dict['shutters'][shutter_id] = shutter
 
-        self.ShuttersByName.pop('original_name', None)
-        self.ShuttersByName[name] = shutter
+        self.shutters_by_name.pop('original_name', None)
+        self.shutters_by_name[name] = shutter
 
 
-    def addShutter(self, name: str, duration: str):
+    def add_shutter(self, name: str, duration: str):
         """Set shutter name and duration and save to config.
 
         Args:
-            shutterId: Shutter identifier
+
             name: Shutter name
             duration: Shutter duration
         """
@@ -413,10 +413,10 @@ class MyConfig:
         while conflict == True:
             tmp_id = tmp_id+1
             conflict = False
-            for key in self.Shutters:
+            for key in self.shutters:
                 if tmp_id == int(key, 16):
                     conflict = True
-        shutterId = "0x%0.2X" % tmp_id
+        shutter_id = "0x%0.2X" % tmp_id
         
         shutter = {
             "name": name,
@@ -427,12 +427,12 @@ class MyConfig:
             "intermediatePosition": None
         }
         with self.json_config() as json_dict:
-            if shutterId in json_dict['shutters']:
-                raise ValueError(f"Shutter {shutterId} already exists")
-            json_dict['shutters'][shutterId] = shutter
+            if shutter_id in json_dict['shutters']:
+                raise ValueError(f"Shutter {shutter_id} already exists")
+            json_dict['shutters'][shutter_id] = shutter
 
-        self.ShuttersByName[name] = shutterId
-        self.Shutters[shutterId] = shutter
+        self.shutters_by_name[name] = shutter_id
+        self.shutters[shutter_id] = shutter
     
     @contextmanager
     def json_config(self):
@@ -446,53 +446,53 @@ class MyConfig:
             with open(self.json_path, 'w') as f:
                 json.dump(json_dict, f, indent=2)
             
-    def setShutterActive(self, shutterId: str, active: bool):
+    def set_shutter_active(self, shutter_id: str, active: bool):
         """Set shutter active status and save to config.
 
         Args:
-            shutterId: Shutter identifier
+            shutter_id: Shutter identifier
             active: Shutter active status
         """
         with self.json_config() as json_dict:
-            json_dict['shutters'][shutterId]['active'] = active
+            json_dict['shutters'][shutter_id]['active'] = active
 
         if not active:
-            self.ShuttersByName.pop(self.Shutters[shutterId]['name'], None)
-            self.Shutters.pop(shutterId, None)
+            self.shutters_by_name.pop(self.shutters[shutter_id]['name'], None)
+            self.shutters.pop(shutter_id, None)
 
-    def setSchedule(self, scheduleId: str, active: bool, repeatType: str, repeatValue: str, timeType: str, timeValue: str, shutterAction: str, shutterIds: str):
+    def set_schedule(self, schedule_id: str, active: bool, repeat_type: str, repeat_value: str, time_type: str, time_value: str, shutter_action: str, shutter_ids: str):
         """Set schedule and save to config.
 
         Args:
-            scheduleId: Schedule identifier
+            schedule_id: Schedule identifier
             active: Schedule active status
-            repeatType: Schedule repeat type
-            repeatValue: Schedule repeat value
-            timeType: Schedule time type
-            timeValue: Schedule time value
-            shutterAction: Schedule shutter action
-            shutterIds: Schedule shutter identifiers
+            repeat_type: Schedule repeat type
+            repeat_value: Schedule repeat value
+            time_type: Schedule time type
+            time_value: Schedule time value
+            shutter_action: Schedule shutter action
+            shutter_ids: Schedule shutter identifiers
         """
         with self.CriticalLock:
             with open(self.json_path, 'r') as f:
                 json_dict = json.load(f)
-            json_dict['schedule'][scheduleId] = {
+            json_dict['schedule'][schedule_id] = {
                 'active': active,
-                'repeatType': repeatType,
-                'repeatValue': repeatValue,
-                'timeType': timeType,
-                'timeValue': timeValue,
-                'shutterAction': shutterAction,
-                'shutterIds': shutterIds
+                'repeatType': repeat_type,
+                'repeatValue': repeat_value,
+                'timeType': time_type,
+                'timeValue': time_value,
+                'shutterAction': shutter_action,
+                'shutterIds': shutter_ids
             }
             with open(self.json_path, 'w') as f:
                 json.dump(json_dict, f, indent=2)
-        self.Schedule[scheduleId] = {
+        self.schedule[schedule_id] = {
             'active': active,
-            'repeatType': repeatType,
-            'repeatValue': repeatValue,
-            'timeType': timeType,
-            'timeValue': timeValue,
-            'shutterAction': shutterAction,
-            'shutterIds': shutterIds
+            'repeatType': repeat_type,
+            'repeatValue': repeat_value,
+            'timeType': time_type,
+            'timeValue': time_value,
+            'shutterAction': shutter_action,
+            'shutterIds': shutter_ids
         }

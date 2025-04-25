@@ -3,7 +3,7 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
-def createWaveForm(txBcmPinNum, teleco, button, code, repetition):
+def create_wave_form(tx_bcm_pin_num, teleco, button, code, repetition):
 
     checksum = 0
 
@@ -49,40 +49,40 @@ def createWaveForm(txBcmPinNum, teleco, button, code, repetition):
 
     #This is where all the awesomeness is happening. You're telling the daemon what you wanna send
     wf=[]
-    wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 9415)) # wake up pulse
-    wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 89565)) # silence
+    wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 9415)) # wake up pulse
+    wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 89565)) # silence
     for i in range(2): # hardware synchronization
-        wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 2560))
-        wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 2560))
-    wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 4550)) # software synchronization
-    wf.append(pigpio.pulse(0, 1<<txBcmPinNum,  640))
+        wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 2560))
+        wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 2560))
+    wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 4550)) # software synchronization
+    wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num,  640))
 
     for i in range (0, 56): # manchester enconding of payload data
         if ((frame[int(i/8)] >> (7 - (i%8))) & 1):
-            wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-            wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
+            wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 640))
+            wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 640))
         else:
-            wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-            wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
+            wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 640))
+            wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 640))
 
-    wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 30415)) # interframe gap
+    wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 30415)) # interframe gap
 
     for j in range(1,repetition): # repeating frames
                 for i in range(7): # hardware synchronization
-                    wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 2560))
-                    wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 2560))
-                wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 4550)) # software synchronization
-                wf.append(pigpio.pulse(0, 1<<txBcmPinNum,  640))
+                    wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 2560))
+                    wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 2560))
+                wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 4550)) # software synchronization
+                wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num,  640))
 
                 for i in range (0, 56): # manchester enconding of payload data
                     if ((frame[int(i/8)] >> (7 - (i%8))) & 1):
-                        wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
-                        wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
+                        wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 640))
+                        wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 640))
                     else:
-                        wf.append(pigpio.pulse(1<<txBcmPinNum, 0, 640))
-                        wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 640))
+                        wf.append(pigpio.pulse(1<<tx_bcm_pin_num, 0, 640))
+                        wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 640))
 
-                wf.append(pigpio.pulse(0, 1<<txBcmPinNum, 30415)) # interframe gap
+                wf.append(pigpio.pulse(0, 1<<tx_bcm_pin_num, 30415)) # interframe gap
 
 
     return wf

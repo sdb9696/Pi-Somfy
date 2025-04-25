@@ -22,33 +22,33 @@ LOGGER = logging.getLogger(__name__)
 
 try:
     from . import fauxmo
-    from .fauxmo import debounce_handler
+    from .fauxmo import DebounceHandler
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))
     sys.exit(2)
 
 
-class device_handler(debounce_handler):
+class DeviceHandler(DebounceHandler):
     """Publishes the on/off state requested,
        and the IP address of the Echo making the request.
     """
     def __init__(self, shutter=None, config=None):
         self.shutter = shutter
         self.config = config
-        super(device_handler, self).__init__()        
+        super(DeviceHandler, self).__init__()
     
     def act(self, client_address, state, name):
         LOGGER.info("--> State " + str(state) + " on " + name + " from client @ " + client_address)
-        shutterId = self.config.ShuttersByName[name]
+        shutter_id = self.config.shutters_by_name[name]
         if state:
-           self.shutter.lower(shutterId)
+           self.shutter.lower(shutter_id)
         else:
-           self.shutter.rise(shutterId)
+           self.shutter.rise(shutter_id)
         return True
 
 
-class Alexa(threading.Thread, debounce_handler):
+class Alexa(threading.Thread, DebounceHandler):
 
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="Alexa")
@@ -62,17 +62,17 @@ class Alexa(threading.Thread, debounce_handler):
             self.config = kwargs["config"]
         
         # Startup the fauxmo server
-        self.poller = fauxmo.poller()
-        self.upnp_responder = fauxmo.upnp_broadcast_responder()
+        self.poller = fauxmo.Poller()
+        self.upnp_responder = fauxmo.UPNPBroadcastResponder()
         self.upnp_responder.init_socket()
         self.poller.add(self.upnp_responder)
 
         # Register the device callback as a fauxmo handler
-        dbh = device_handler(shutter=self.shutter, config=self.config)
-        for shutter, shutterId in sorted(self.config.ShuttersByName.items(), key=lambda kv: kv[1]):
-            portId = 50000 + (abs(int(shutterId,16)) % 10000)
-            LOGGER.info ("Remote address in dec: " + str(int(shutterId,16)) + ", WeMo port will be n°" + str(portId))
-            fauxmo.fauxmo(shutter, self.upnp_responder, self.poller, None, portId, dbh)
+        dbh = DeviceHandler(shutter=self.shutter, config=self.config)
+        for shutter, shutter_id in sorted(self.config.shutters_by_name.items(), key=lambda kv: kv[1]):
+            port_id = 50000 + (abs(int(shutter_id,16)) % 10000)
+            LOGGER.info ("Remote address in dec: " + str(int(shutter_id,16)) + ", WeMo port will be n°" + str(port_id))
+            fauxmo.FauxMo(shutter, self.upnp_responder, self.poller, None, port_id, dbh)
                         
         return
 

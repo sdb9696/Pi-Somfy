@@ -72,7 +72,7 @@ SETUP_XML ="""<?xml version=1.0?>
 # A simple utility class to wait for incoming data to be
 # ready on a socket.
 
-class poller:
+class Poller:
     def __init__(self):
         self.poller = select.poll()
         self.targets = {}
@@ -104,21 +104,21 @@ class poller:
 # but it supports either specified or automatic IP address and port
 # selection.
 
-class upnp_device:
+class UPNPDevice:
     this_host_ip = None
 
     @staticmethod
     def local_ip_address():
-        if not upnp_device.this_host_ip:
+        if not UPNPDevice.this_host_ip:
             temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
                 temp_socket.connect(('8.8.8.8', 53))
-                upnp_device.this_host_ip = temp_socket.getsockname()[0]
+                UPNPDevice.this_host_ip = temp_socket.getsockname()[0]
             except:
-                upnp_device.this_host_ip = '127.0.0.1'
+                UPNPDevice.this_host_ip = '127.0.0.1'
             del(temp_socket)
             # LOGGER.info("got local address of %s" % upnp_device.this_host_ip)
-        return upnp_device.this_host_ip
+        return UPNPDevice.this_host_ip
 
 
     def __init__(self, listener, poller, port, root_url, server_version, persistent_uuid, other_headers = None, ip_address = None):
@@ -134,7 +134,7 @@ class upnp_device:
         if ip_address:
             self.ip_address = ip_address
         else:
-            self.ip_address = upnp_device.local_ip_address()
+            self.ip_address = UPNPDevice.local_ip_address()
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -192,7 +192,7 @@ class upnp_device:
 
 # This subclass does the bulk of the work to mimic a WeMo switch on the network.
 
-class fauxmo(upnp_device):
+class FauxMo(UPNPDevice):
     @staticmethod
     def make_uuid(name):
         return ''.join(["%x" % sum([ord(c) for c in name])] + ["%x" % ord(c) for c in "%sfauxmo!" % name])[:14]
@@ -200,11 +200,11 @@ class fauxmo(upnp_device):
     def __init__(self, name, listener, poller, ip_address, port, action_handler = None):
         self.serial = self.make_uuid(name)
         self.name = name
-        self.switchStatus=0
+        self.switch_status = 0
         self.ip_address = ip_address
         persistent_uuid = "Socket-1_0-" + self.serial
         other_headers = ['X-User-Agent: redsonic']
-        upnp_device.__init__(self, listener, poller, port, "http://%(ip_address)s:%(port)s/setup.xml", "Unspecified, UPnP/1.0, Unspecified", persistent_uuid, other_headers=other_headers, ip_address=ip_address)
+        UPNPDevice.__init__(self, listener, poller, port, "http://%(ip_address)s:%(port)s/setup.xml", "Unspecified, UPnP/1.0, Unspecified", persistent_uuid, other_headers=other_headers, ip_address=ip_address)
         if action_handler:
             self.action_handler = action_handler
         else:
@@ -247,12 +247,12 @@ class fauxmo(upnp_device):
                     # on
                     LOGGER.info("Responding to ON for %s" % self.name)
                     success = self.action_handler.on(client_address[0], self.name)
-                    self.switchStatus=1
+                    self.switch_status = 1
                 elif data.find('<BinaryState>0</BinaryState>') != -1:
                     # off
                     LOGGER.info("Responding to OFF for %s" % self.name)
                     success = self.action_handler.off(client_address[0], self.name)
-                    self.switchStatus=0
+                    self.switch_status = 0
                 else:
                     LOGGER.info("Unknown Binary State request:")
                     LOGGER.info(data)
@@ -284,7 +284,7 @@ class fauxmo(upnp_device):
                 <s:Body>
                     <u:GetBinaryStateResponse
                     xmlns:u="urn:Belkin:service:basicevent:1">
-                    <BinaryState>"""+ str(self.switchStatus) +"""</BinaryState>
+                    <BinaryState>"""+ str(self.switch_status) +"""</BinaryState>
                     </u:GetBinaryStateResponse>
                 </s:Body></s:Envelope>""" 
             
@@ -324,7 +324,7 @@ class fauxmo(upnp_device):
 # support the more common root device general search. The Echo
 # doesn't search for root devices.
 
-class upnp_broadcast_responder:
+class UPNPBroadcastResponder:
     TIMEOUT = 0
 
     def __init__(self):
@@ -398,14 +398,14 @@ class upnp_broadcast_responder:
         LOGGER.info("UPnP broadcast listener: new device registered")
 
 
-class debounce_handler(object):
+class DebounceHandler(object):
     """Use this handler to keep multiple Amazon Echo devices from reacting to
        the same voice command.
     """
     DEBOUNCE_SECONDS = 0.3
 
     def __init__(self):
-        self.lastEcho = time.time()
+        self.last_echo = time.time()
 
     def on(self, client_address, name):
         if self.debounce():
@@ -426,10 +426,10 @@ class debounce_handler(object):
            Adding a refractory period to handlers keeps us from worrying about
            one Echo overhearing a command meant for another one.
         """
-        if (time.time() - self.lastEcho) < self.DEBOUNCE_SECONDS:
+        if (time.time() - self.last_echo) < self.DEBOUNCE_SECONDS:
             return True
 
-        self.lastEcho = time.time()
+        self.last_echo = time.time()
         return False
 
 

@@ -23,7 +23,7 @@ from time import sleep
 import pigpio as gpio
 from .rfm69 import Rfm69
 import json
-from .somfyRtsWaveForm import createWaveForm
+from .rts_wave_form import create_wave_form
 from .pigpio_helper import create_pigpio_connection
 import threading
 import time
@@ -31,25 +31,23 @@ import time
 LOGGER = logging.getLogger(__name__)
 
 # define pigpio GPIO-pins where self.RESETPIN- and self.DATAPIN-Pin of RFM69-Transceiver are connected
-RESETPINDEFAULT = 25
-DATAPINDEFAULT = 26
+RESETPIN_DEFAULT = 25
+DATAPIN_DEFAULT = 26
 
 class SomfyRfm69Tx(object):
 
     # define pigpio-host 
     HOST = "localhost"
    
-
-    config=None
-
+    config = None
     clock = 640    
 
-    def __init__(self, resetBcmPinNumber = RESETPINDEFAULT, dataBcmPinNumber = DATAPINDEFAULT, pigpiohost="localhost", pigpioport=8888, spichannel=0, spibaudrate=32000, pigpio_connect_timeout=None):
+    def __init__(self, reset_bcm_pin_number = RESETPIN_DEFAULT, data_bcm_pin_number = DATAPIN_DEFAULT, pigpiohost="localhost", pigpioport=8888, spichannel=0, spibaudrate=32000, pigpio_connect_timeout=None):
 
         self.piconnected = False
 
-        self.RESETPIN = resetBcmPinNumber
-        self.DATAPIN = dataBcmPinNumber
+        self.RESETPIN = reset_bcm_pin_number
+        self.DATAPIN = data_bcm_pin_number
         self.pigpiohost = pigpiohost
         self.pigpioport = pigpioport
         self.spichannel = spichannel
@@ -68,7 +66,7 @@ class SomfyRfm69Tx(object):
             self.pi.stop()
             self.piconnected = False             
 
-    def _startTransmit(self):
+    def _start_transmit(self):
         
         # prepare GPIO-Pins
         self.pi.set_mode(self.RESETPIN, gpio.OUTPUT)
@@ -116,15 +114,15 @@ class SomfyRfm69Tx(object):
             if timespent >= timeout:
                 raise RuntimeError("Timed out waiting for ready signal after initialising RFM69")
 
-    def _endTransmit(self):
+    def _end_transmit(self):
         # reset transmitter
         self.pi.write(self.RESETPIN, 1)
         self.pi.write(self.RESETPIN, 0)
         sleep(.005)
 
-    def sendWaveForm(self, waveform):
+    def send_wave_form(self, waveform):
         
-        self._startTransmit()
+        self._start_transmit()
 
         # delete existing waveforms
         self.pi.wave_clear()
@@ -140,15 +138,15 @@ class SomfyRfm69Tx(object):
 
         self.pi.wave_clear()
 
-        self._endTransmit()
+        self._end_transmit()
 
     
 
-    def sendCommand(self, address, command, rolling_code):
+    def send_command(self, address, command, rolling_code):
         
-        wf = createWaveForm(self.DATAPIN, address, command, rolling_code, 3)
+        wf = create_wave_form(self.DATAPIN, address, command, rolling_code, 3)
 
-        self.sendWaveForm(wf)
+        self.send_wave_form(wf)
 
 
 COMMANDS={
@@ -180,9 +178,9 @@ def main(buttoncode):
         json.dump(config, f)
 
 
-    with SomfyRfm69Tx() as s69Tx:
+    with SomfyRfm69Tx() as rfm69_tx:
 
-        s69Tx.sendCommand(int(config["address"], 16), buttoncode, rc  )
+        rfm69_tx.send_command(int(config["address"], 16), buttoncode, rc  )
 
 
 if __name__ == "__main__":

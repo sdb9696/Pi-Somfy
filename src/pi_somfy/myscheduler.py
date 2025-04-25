@@ -17,7 +17,7 @@ import threading
 LOGGER = logging.getLogger(__name__)
 
 try:
-    from .myconfig import MyConfig
+    from .config import MyConfig
 except Exception as e1:
     print("\n\nThis program requires the modules located from the same github repository that are not present.\n")
     print("Error: " + str(e1))
@@ -33,48 +33,48 @@ class Event:
     ## shutterAction: String: 'up', 'down' or 'stop' (My-Position) are valid values. If this is followed by an integer, this indicates the duration of the operation
     ## shutterIds: Array of shutterIds to operate
 
-    def __init__(self,active,repeatType,repeatValue,timeType,timeValue,shutterAction,shutterIds):
+    def __init__(self, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids):
     
         if active not in ('active', 'paused', 'deleted'):
             raise ValueError("%s is not a valid value for ACTIVE." % active )
         self.active = active
 
-        if repeatType not in ('once', 'weekday'):
-            raise ValueError("%s is not a valid value for REPEATTYPE." % timeType)
-        self.repeatType = repeatType
+        if repeat_type not in ('once', 'weekday'):
+            raise ValueError("%s is not a valid value for REPEATTYPE." % time_type)
+        self.repeat_type = repeat_type
                 
-        if (repeatValue == 'weekday') and not all(elem in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] for elem in repeatValue):
-            raise ValueError("%s is not a valid value for REPEATVALUE (weekday)." % repeatValue )
-        if (repeatValue == 'once') and not (datetime.datetime.strptime(repeatValue, '%Y/%m/%d')):
-            raise ValueError("%s is not a valid value for REPEATVALUE (once)." % repeatValue )
-        self.repeatValue = repeatValue
+        if (repeat_value == 'weekday') and not all(elem in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] for elem in repeat_value):
+            raise ValueError("%s is not a valid value for REPEATVALUE (weekday)." % repeat_value )
+        if (repeat_value == 'once') and not (datetime.datetime.strptime(repeat_value, '%Y/%m/%d')):
+            raise ValueError("%s is not a valid value for REPEATVALUE (once)." % repeat_value )
+        self.repeat_value = repeat_value
         
-        if timeType not in ('clock', 'astro'):
-            raise ValueError("%s is not a valid value for TIMETYPE." % timeType)
-        self.timeType = timeType
+        if time_type not in ('clock', 'astro'):
+            raise ValueError("%s is not a valid value for TIMETYPE." % time_type)
+        self.time_type = time_type
 
-        if (timeType == "clock") and not time.strptime(timeValue, '%H:%M'):
-            raise ValueError("%s is not a valid value for TIMEVALUE (clock)." % timeValue )
-        astro_parts = re.split(r'\+|\-', timeValue)
-        if (timeType == "astro") and not ((astro_parts[0] in ('sunset', 'sunrise')) and ((len(astro_parts) == 1) or (astro_parts[1] == None or int(astro_parts[1])))):
-            raise ValueError("%s is not a valid value for TIMEVALUE (astro)." % timeValue)
-        self.timeValue = timeValue
+        if (time_type == "clock") and not time.strptime(time_value, '%H:%M'):
+            raise ValueError("%s is not a valid value for TIMEVALUE (clock)." % time_value )
+        astro_parts = re.split(r'\+|\-', time_value)
+        if (time_type == "astro") and not ((astro_parts[0] in ('sunset', 'sunrise')) and ((len(astro_parts) == 1) or (astro_parts[1] == None or int(astro_parts[1])))):
+            raise ValueError("%s is not a valid value for TIMEVALUE (astro)." % time_value)
+        self.time_value = time_value
 
         # if not ((isinstance(shutterAction, str)) and ((shutterAction.startswith("up") or shutterAction.startswith("down")))):
-        if not ((shutterAction.startswith("up") or shutterAction.startswith("down") or shutterAction.startswith("stop"))):
-            raise ValueError("%s is not a valid value for ACTION." % shutterAction)
-        self.shutterAction = shutterAction
+        if not ((shutter_action.startswith("up") or shutter_action.startswith("down") or shutter_action.startswith("stop"))):
+            raise ValueError("%s is not a valid value for ACTION." % shutter_action)
+        self.shutter_action = shutter_action
 
-        self.shutterIds = shutterIds
+        self.shutter_ids = shutter_ids
         
-    def prettyprint(self):
+    def pretty_print(self):
         outstr  = "active        : "+str(self.active)+"\n"
-        outstr += "repeatType    : "+str(self.repeatType)+"\n"
-        outstr += "repeatValue   : "+str(self.repeatValue)+"\n"
-        outstr += "timeType      : "+str(self.timeType)+"\n"
-        outstr += "timeValue     : "+str(self.timeValue)+"\n"
-        outstr += "shutterAction : "+str(self.shutterAction)+"\n"
-        outstr += "shutterIds    : "+str(self.shutterIds)+"\n"
+        outstr += "repeat_type    : "+str(self.repeat_type)+"\n"
+        outstr += "repeat_value   : "+str(self.repeat_value)+"\n"
+        outstr += "time_type      : "+str(self.time_type)+"\n"
+        outstr += "time_value     : "+str(self.time_value)+"\n"
+        outstr += "shutter_action : "+str(self.shutter_action)+"\n"
+        outstr += "shutter_ids    : "+str(self.shutter_ids)+"\n"
         
         return outstr
            
@@ -85,23 +85,23 @@ class Schedule:
         self.config = config
 
         self.schedule = {}
-        self.setUpdateTime()
+        self.set_update_time()
         
-    def addEvent(self, id, evt):
+    def add_event(self, id, evt):
         if id in self.schedule.items():
             LOGGER.error("Event ID is not unique: "+ str(id))
             
-        LOGGER.debug('addEvent: Waiting for Lock')
+        LOGGER.debug('add_event: Waiting for Lock')
         self.lock.acquire()
         try:
-            LOGGER.debug('addEvent: Lock aquired')
+            LOGGER.debug('add_event: Lock aquired')
             self.schedule[id] = evt
-            self.setUpdateTime()
+            self.set_update_time()
         finally:
             self.lock.release()
-            LOGGER.debug('addEvent: Lock released')
+            LOGGER.debug('add_event: Lock released')
             
-    def getNewId(self):
+    def get_new_id(self):
         ids = []
         for key in self.schedule:
             ids.append(int(key))
@@ -109,126 +109,126 @@ class Schedule:
             return 1
         return (max(ids)+1)
             
-    def addOneEventByTime(self, shutterIds, shutterAction, hour, minute):
+    def add_one_event_by_time(self, shutter_ids, shutter_action, hour, minute):
         try: 
-            evt = Event('active', 'once', datetime.datetime.today().strftime('%Y/%m/%d'), "clock", str(hour)+":"+str(minute), shutterAction, shutterIds)
-            self.addEvent(self.getNewId(), evt)
+            evt = Event('active', 'once', datetime.datetime.today().strftime('%Y/%m/%d'), "clock", str(hour)+":"+str(minute), shutter_action, shutter_ids)
+            self.add_event(self.get_new_id(), evt)
         except ValueError as ex:
             LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
-    def addRepeatEventByTime(self, shutterIds, shutterAction, hour, minute, weekdays):
+    def add_repeat_event_by_time(self, shutter_ids, shutter_action, hour, minute, weekdays):
         try: 
-            evt = Event('active', 'weekday', weekdays, "clock", str(hour)+":"+str(minute), shutterAction, shutterIds)
-            self.addEvent(self.getNewId(), evt)
+            evt = Event('active', 'weekday', weekdays, "clock", str(hour)+":"+str(minute), shutter_action, shutter_ids)
+            self.add_event(self.get_new_id(), evt)
         except ValueError as ex:
             LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
-    def addRepeatEventBySunrise(self, shutterIds, shutterAction, delay, weekdays):
+    def add_repeat_event_by_sunrise(self, shutter_ids, shutter_action, delay, weekdays):
         try: 
-            timeValue = "sunrise"
+            time_value = "sunrise"
             if int(delay) > 0:
-               timeValue = "sunrise+"+str(delay)
+               time_value = "sunrise+"+str(delay)
             if int(delay) < 0:
-               timeValue = "sunrise"+str(delay)
-            evt = Event('active', 'weekday', weekdays, "astro", timeValue, shutterAction, shutterIds)
-            self.addEvent(self.getNewId(), evt)
+               time_value = "sunrise"+str(delay)
+            evt = Event('active', 'weekday', weekdays, "astro", time_value, shutter_action, shutter_ids)
+            self.add_event(self.get_new_id(), evt)
         except ValueError as ex:
             LOGGER.error("Failed to add event: "+ str(ex))
             pass
 
-    def addRepeatEventBySunset(self, shutterIds, shutterAction, delay, weekdays):
+    def add_repeat_event_by_sunset(self, shutter_ids, shutter_action, delay, weekdays):
         try: 
-            timeValue = "sunset"
+            time_value = "sunset"
             if int(delay) > 0:
-               timeValue = "sunset+"+str(delay)
+               time_value = "sunset+"+str(delay)
             if int(delay) < 0:
-               timeValue = "sunset"+str(delay)
-            evt = Event('active', 'weekday', weekdays, "astro", timeValue, shutterAction, shutterIds)
-            self.addEvent(self.getNewId(), evt)
+               time_value = "sunset"+str(delay)
+            evt = Event('active', 'weekday', weekdays, "astro", time_value, shutter_action, shutter_ids)
+            self.add_event(self.get_new_id(), evt)
         except ValueError as ex:
             LOGGER.error("Failed to add event: "+ str(ex))
             pass
             
-    def loadScheudleFromConfig(self):
+    def load_schedule_from_config(self):
         LOGGER.debug("Loading Schedule from Config File")
-        for id, data in self.config.Schedule.items():
+        for id, data in self.config.schedule.items():
             LOGGER.debug("Loading Schedule "+str(id))
-            repeatValue = data['repeatValue']
-            evt =  Event(data['active'],data['repeatType'],repeatValue,data['timeType'],data['timeValue'],data['shutterAction'],data['shutterIds'])
-            self.addEvent(id, evt)
+            repeat_value = data['repeatValue']
+            evt = Event(data['active'], data['repeatType'], repeat_value, data['timeType'], data['timeValue'], data['shutterAction'], data['shutterIds'])
+            self.add_event(id, evt)
             
-    def addSchedule(self, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds):
+    def add_schedule(self, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids):
 
-        id = self.getNewId()
+        id = self.get_new_id()
 
            
-        self.config.setSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
+        self.config.set_schedule(id, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
 
-        self.config.Schedule[str(id)] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValue, 
-                                    'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
-                                    'shutterIds': shutterIds}
+        self.config.schedule[str(id)] = {'active': active, 'repeatType': repeat_type, 'repeatValue': repeat_value,
+                                    'timeType': time_type, 'timeValue': time_value, 'shutterAction': shutter_action,
+                                    'shutterIds': shutter_ids}
 
 
-        evt =  Event(active,repeatType,repeatValue,timeType,timeValue,shutterAction,shutterIds)
-        self.addEvent(str(id), evt)
+        evt = Event(active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
+        self.add_event(str(id), evt)
             
-        self.setUpdateTime()
+        self.set_update_time()
         return { 'status': 'OK', 'id': str(id) }
 
-    def editSchedule(self, id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds):
+    def edit_schedule(self, id, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids):
 
-        if ((not id in self.schedule) or (not id in self.config.Schedule)):
+        if ((not id in self.schedule) or (not id in self.config.schedule)):
             return {'status': 'ERROR', 'message': 'Schedule does not exist'}
         else:
 
-            self.config.setSchedule(id, active, repeatType, repeatValue, timeType, timeValue, shutterAction, shutterIds)
-            self.config.Schedule[id] = {'active': active, 'repeatType': repeatType, 'repeatValue': repeatValue, 
-                                        'timeType': timeType, 'timeValue': timeValue, 'shutterAction': shutterAction, 
-                                        'shutterIds': shutterIds}
+            self.config.set_schedule(id, active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
+            self.config.schedule[id] = {'active': active, 'repeatType': repeat_type, 'repeatValue': repeat_value,
+                                        'timeType': time_type, 'timeValue': time_value, 'shutterAction': shutter_action,
+                                        'shutterIds': shutter_ids}
 
             self.schedule.pop(id, None)
-            evt =  Event(active,repeatType,repeatValue,timeType,timeValue,shutterAction,shutterIds)
-            self.addEvent(id, evt)
+            evt = Event(active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids)
+            self.add_event(id, evt)
             
-            self.setUpdateTime()
+            self.set_update_time()
             return {'status': 'OK'}
 
-    def deleteSchedule(self, id):
-        if ((not id in self.schedule) or (not id in self.config.Schedule)):
+    def delete_schedule(self, id):
+        if ((not id in self.schedule) or (not id in self.config.schedule)):
             return {'status': 'ERROR', 'message': 'Schedule does not exist'}
         else:
-            evt = self.config.Schedule[id]
-            self.config.setSchedule(id, "deleted", evt['repeatType'], evt['repeatValue'], evt['timeType'], evt['timeValue'], evt['shutterAction'], evt['shutterIds'])
+            evt = self.config.schedule[id]
+            self.config.set_schedule(id, "deleted", evt['repeatType'], evt['repeatValue'], evt['timeType'], evt['timeValue'], evt['shutterAction'], evt['shutterIds'])
 
-            self.config.Schedule.pop(id, None)
+            self.config.schedule.pop(id, None)
             self.schedule.pop(id, None)
-            self.setUpdateTime()
+            self.set_update_time()
             return {'status': 'OK'}
             
-    def printSchedule(self):
+    def print_schedule(self):
         for id, evt in self.schedule.items():
            print ("")
            print ("Event: "+str(id))
-           print (evt.prettyprint())
+           print (evt.pretty_print())
 
-    def getSchedule(self):
+    def get_schedule(self):
         return self.schedule
 
-    def getScheduleAsDict(self):
+    def get_schedule_as_dict(self):
         obj = {}
         for id, evt in self.schedule.items():
             if evt.active != "deleted":
-                item = {'active': evt.active, 'repeatType':evt.repeatType, 'repeatValue':evt.repeatValue, 'timeType':evt.timeType, 'timeValue': evt.timeValue, 'shutterIds': evt.shutterIds, 'shutterAction': evt.shutterAction}
+                item = {'active': evt.active, 'repeatType':evt.repeat_type, 'repeatValue':evt.repeat_value, 'timeType':evt.time_type, 'timeValue': evt.time_value, 'shutterIds': evt.shutter_ids, 'shutterAction': evt.shutter_action}
                 obj[id] = item
         return obj
 
-    def setUpdateTime(self):
-        self.updateTime = int(time.time())
+    def set_update_time(self):
+        self.update_time = int(time.time())
 
-    def getUpdateTime(self):
-        return self.updateTime
+    def get_update_time(self):
+        return self.update_time
         
 
 class Scheduler(threading.Thread):
@@ -236,105 +236,103 @@ class Scheduler(threading.Thread):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="Scheduler")
         self.shutdown_flag = threading.Event()
-        
         self.args = args
         self.kwargs = kwargs
         self.schedule = kwargs["schedule"]
         self.shutter = kwargs["shutter"]
         self.config = kwargs["config"]
         self.weekday = datetime.datetime.today().weekday()
-        self.lastScheduleUpdateTime = 0
-        self.currentSchedule = {}
+        self.last_schedule_update_time = 0
+        self.current_schedule = {}
 
-        self.homeLocation = ephem.Observer()
+        self.home_location = ephem.Observer()
         locale.setlocale(locale.LC_TIME,'')
         return
 
-    def updateSchedule(self):
-        weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    def update_schedule(self):
+        week_days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         
-        self.homeLocation.lat = str(self.config.Latitude)
-        self.homeLocation.lon = str(self.config.Longitude)
-        self.homeLocation.date = datetime.datetime.now().strftime("%Y/%m/%d 00:00:00")
-        sunrise = ephem.localtime(self.homeLocation.next_rising(ephem.Sun()))
-        sunset = ephem.localtime(self.homeLocation.next_setting(ephem.Sun()))
-        weekday = weekDays[datetime.datetime.today().weekday()]
-        date    = datetime.datetime.today().strftime('%Y/%m/%d')
+        self.home_location.lat = str(self.config.Latitude)
+        self.home_location.lon = str(self.config.Longitude)
+        self.home_location.date = datetime.datetime.now().strftime("%Y/%m/%d 00:00:00")
+        sunrise = ephem.localtime(self.home_location.next_rising(ephem.Sun()))
+        sunset = ephem.localtime(self.home_location.next_setting(ephem.Sun()))
+        weekday = week_days[datetime.datetime.today().weekday()]
+        date = datetime.datetime.today().strftime('%Y/%m/%d')
         LOGGER.info("Today is "+date+", a "+weekday+", Sunrise is at "+str(sunrise.time())+" and Sunset is at "+ str(sunset.time()));
+        self.current_schedule = {}
+        for id, event in self.schedule.get_schedule().items():
+            if ((event.active == "active") and (((event.repeat_type == 'weekday') and (weekday in event.repeat_value)) or ((event.repeat_type == 'once') and (date == event.repeat_value)))):
+                if (event.time_type == "clock"):
+                    event_time = datetime.time(int(event.time_value.split(":")[0]), int(event.time_value.split(":")[1]), 0)
+                elif ((event.time_type == "astro") and (event.time_value.startswith("sunrise"))):
+                    event_time = (sunrise + datetime.timedelta(minutes=int(event.time_value[7:] or 0))).time()
+                elif ((event.time_type == "astro") and (event.time_value.startswith("sunset"))):
+                    event_time = (sunset + datetime.timedelta(minutes=int(event.time_value[6:] or 0))).time()
 
-        self.currentSchedule = {}
-        for id, event in self.schedule.getSchedule().items():
-            if ((event.active == "active") and (((event.repeatType == 'weekday') and (weekday in event.repeatValue)) or ((event.repeatType == 'once') and (date == event.repeatValue)))):
-                if (event.timeType == "clock"):
-                    eventTime = datetime.time(int(event.timeValue.split(":")[0]), int(event.timeValue.split(":")[1]), 0)
-                elif ((event.timeType == "astro") and (event.timeValue.startswith("sunrise"))):
-                    eventTime = (sunrise + datetime.timedelta(minutes=int(event.timeValue[7:] or 0))).time()
-                elif ((event.timeType == "astro") and (event.timeValue.startswith("sunset"))):
-                    eventTime = (sunset + datetime.timedelta(minutes=int(event.timeValue[6:] or 0))).time()
-
-                if (eventTime > datetime.datetime.now().time()): 
-                    eventTimeStr = "%02d:%02d" % (eventTime.hour, eventTime.minute)
-                    if not eventTimeStr in self.currentSchedule:
-                        self.currentSchedule[eventTimeStr] = []
-                    self.currentSchedule[eventTimeStr].append([event.shutterIds, event.shutterAction])  
-        LOGGER.debug("Current schedule: %s", self.currentSchedule)
+                if (event_time > datetime.datetime.now().time()):
+                    event_time_str = "%02d:%02d" % (event_time.hour, event_time.minute)
+                    if not event_time_str in self.current_schedule:
+                        self.current_schedule[event_time_str] = []
+                    self.current_schedule[event_time_str].append([event.shutter_ids, event.shutter_action])
+        LOGGER.debug("Current schedule: %s", self.current_schedule)
     
     def run(self):
-        # self.schedule.printSchedule()
+        # self.schedule.print_schedule()
         while not self.shutdown_flag.is_set():
-            currentScheduleUpdateTime = self.schedule.getUpdateTime();
-            if ((self.lastScheduleUpdateTime < currentScheduleUpdateTime) or (self.weekday != datetime.datetime.today().weekday())):
-                self.updateSchedule()
+            current_schedule_update_time = self.schedule.get_update_time();
+            if ((self.last_schedule_update_time < current_schedule_update_time) or (self.weekday != datetime.datetime.today().weekday())):
+                self.update_schedule()
                 self.weekday = datetime.datetime.today().weekday()
-                self.lastScheduleUpdateTime = currentScheduleUpdateTime
+                self.last_schedule_update_time = current_schedule_update_time
                
             ## check next event 
-            timeNow = datetime.datetime.now().time()
-            timeNowStr = "%02d:%02d" % (timeNow.hour, timeNow.minute)
-            eventsToDelete = [];
-            for eventTimeStr, eventDetails in self.currentSchedule.items():
-                if (eventTimeStr <= timeNowStr):
-                    for eventDetail in eventDetails:
-                        for shutterId in eventDetail[0]:
+            time_now = datetime.datetime.now().time()
+            time_now_str = "%02d:%02d" % (time_now.hour, time_now.minute)
+            events_to_delete = [];
+            for event_time_str, event_details in self.current_schedule.items():
+                if (event_time_str <= time_now_str):
+                    for event_detail in event_details:
+                        for shutter_id in event_detail[0]:
                             try:
-                                LOGGER.info("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" at " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
-                                if (eventDetail[1].startswith("up")):
-                                    s = eventDetail[1][2:].strip()
+                                LOGGER.info("Send action \""+event_detail[1]+"\" to shutter_id \""+shutter_id+"\" at " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+                                if (event_detail[1].startswith("up")):
+                                    s = event_detail[1][2:].strip()
                                     s1 = int(s) if s else -1
                                     if (0 < s1 < 100):
-                                        if (self.shutter.getPosition(shutterId) < s1):   #Is Shutter below requested Position?
-                                            self.shutter.risePartial(shutterId, s1)
+                                        if (self.shutter.get_position(shutter_id) < s1):   #Is Shutter below requested Position?
+                                            self.shutter.rise_partial(shutter_id, s1)
                                         else:
-                                            LOGGER.warning("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or above requested position")                                      
+                                            LOGGER.warning("Send action \""+event_detail[1]+"\" to shutter_id \""+shutter_id+"\" was canceled! Shutter was already at same or above requested position")
                                     else :  
                                         for i in range(self.config.SendRepeat):
-                                            self.shutter.rise(shutterId)
+                                            self.shutter.rise(shutter_id)
                                             time.sleep(5)
-                                elif (eventDetail[1].startswith("down")):
-                                    s = eventDetail[1][4:].strip()
+                                elif (event_detail[1].startswith("down")):
+                                    s = event_detail[1][4:].strip()
                                     s1 = int(s) if s else -1
                                     if (0 < s1 < 100):
-                                        if (self.shutter.getPosition(shutterId) > s1):   #Is Shutter above requested Position?
-                                            self.shutter.lowerPartial(shutterId, s1)
+                                        if (self.shutter.get_position(shutter_id) > s1):   #Is Shutter above requested Position?
+                                            self.shutter.lower_partial(shutter_id, s1)
                                         else:
-                                            LOGGER.warning("Send action \""+eventDetail[1]+"\" to shutterId \""+shutterId+"\" was canceled! Shutter was already at same or below requested position")                                         
+                                            LOGGER.warning("Send action \""+event_detail[1]+"\" to shutter_id \""+shutter_id+"\" was canceled! Shutter was already at same or below requested position")
                                     else :  
                                         for i in range(self.config.SendRepeat):
-                                            self.shutter.lower(shutterId)
+                                            self.shutter.lower(shutter_id)
                                             time.sleep(5)
-                                elif (eventDetail[1].startswith("stop")):
-                                    self.shutter.stop(shutterId)
+                                elif (event_detail[1].startswith("stop")):
+                                    self.shutter.stop(shutter_id)
                             except Exception as e:
-                                LOGGER.error ("Error: cannot open "+shutterId)
+                                LOGGER.error ("Error: cannot open "+shutter_id)
                                 LOGGER.error (traceback.format_exc())
-                    eventsToDelete.append(eventTimeStr);
-            for key in eventsToDelete:
+                    events_to_delete.append(event_time_str);
+            for key in events_to_delete:
                 try:
-                    del self.currentSchedule[key] 
+                    del self.current_schedule[key]
                 except KeyError:
                     pass
-            if (len(eventsToDelete) > 0):
-                LOGGER.debug(str(self.currentSchedule))
+            if (len(events_to_delete) > 0):
+                LOGGER.debug(str(self.current_schedule))
          
             self.shutdown_flag.wait(60 - datetime.datetime.now().time().second)
             
