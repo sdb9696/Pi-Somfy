@@ -5,7 +5,6 @@ from typing import Optional
 import logging
 import socket
 import logging.config
-import click
 import os
 import getpass
 from pathlib import Path
@@ -142,8 +141,8 @@ def cli(
     config = MyConfig(filename=filename_no_ext)
     result = config.load_config()
     if not result:
-        click.error("Failure to load configuration parameters")    
-    
+        click.error("Failure to load configuration parameters")
+
     log_file = config.LogLocation + "operateShutters-" + getpass.getuser() + ".log"
     setup_logger(log_file, logging.DEBUG, config.LogToConsole)
 

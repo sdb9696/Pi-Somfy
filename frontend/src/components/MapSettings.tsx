@@ -23,16 +23,16 @@ function MapEvents({ onLocationUpdate }: { onLocationUpdate: (lat: number, lng: 
 
 const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: MapSettingsProps) => {
   const [position, setPosition] = useState<[number, number]>([
-    initialLatitude || 51.505, 
+    initialLatitude || 51.505,
     initialLongitude || -0.09
   ]);
-  
+
   const mapRef = useRef<any>(null);
-  
+
   const handleLocationUpdate = (lat: number, lng: number) => {
     setPosition([lat, lng]);
   };
-  
+
   const handleSaveLocation = async () => {
     try {
       const result = await setLocation(position[0], position[1]);
@@ -47,15 +47,15 @@ const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: Map
       toast.error('Error saving location', {description: errorMessage});
     }
   };
-  
+
   return (
     <div>
       <p>Select your home location by clicking on the map:</p>
-            
+
       <div style={{ height: '400px', marginBottom: '20px' }}>
-        <MapContainer 
-          center={position} 
-          zoom={13} 
+        <MapContainer
+          center={position}
+          zoom={13}
           style={{ height: '100%', width: '100%' }}
           ref={mapRef}
         >
@@ -67,7 +67,7 @@ const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: Map
           <MapEvents onLocationUpdate={handleLocationUpdate} />
         </MapContainer>
       </div>
-      
+
       <Button onClick={handleSaveLocation}>
         Save Location
       </Button>

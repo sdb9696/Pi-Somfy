@@ -24,13 +24,13 @@ interface ShutterManagerProps {
 const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: ShutterManagerProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingShutter, setEditingShutter] = useState<null | { id: string, name: string, duration: string }>(null);
-  
-  
+
+
   // For new shutter form
   const [newShutter, setNewShutter] = useState({ name: '', duration: '10' });
   const [addingShutter, setAddingShutter] = useState(false);
   const [addedShutter, setAddedShutter] = useState<string | null>(null);
-    
+
   const handleAddShutter = async () => {
     try {
       const data = await addShutter(newShutter.name, newShutter.duration);
@@ -41,7 +41,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
       console.error('Error adding shutter:', error);
     }
   };
-  
+
   const handleAbortAdd = async () => {
     if (!addedShutter) return;
     setAddingShutter(false);
@@ -60,10 +60,10 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
     setIsEditing(false);
     setEditingShutter(null);
   };
-  
+
   const handleSaveEdit = async () => {
     if (!editingShutter) return;
-    
+
     try {
       await editShutter(editingShutter.id, editingShutter.name, editingShutter.duration);
       setIsEditing(false);
@@ -73,9 +73,9 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
       console.error('Error editing shutter:', error);
     }
   };
-  
-  
-  const handleDelete = async (id: string) => {   
+
+
+  const handleDelete = async (id: string) => {
     try {
       await deleteShutter(id);
       onShutterChange();
@@ -83,7 +83,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
       console.error('Error deleting shutter:', error);
     }
   };
-  
+
 
   const handleSendProgram = async (id: string) => {
     try {

@@ -1,4 +1,3 @@
-import pytest
 from click.testing import CliRunner
 from pi_somfy.cli import cli
 from pi_somfy.operate_shutters import Shutter
@@ -51,7 +50,7 @@ def test_cli_press():
 def test_cli_config_migration():
     """Test that config migration works correctly with a cleaned config file."""
     runner = CliRunner()
-    
+
     # Minimal cleaned config content from testconfig_cleaned.conf
     cleaned_config = """[General]
 LogLocation=.
@@ -84,28 +83,28 @@ EnableDiscovery=true
 0x279621=None
 [Scheduler]
 """
-    
+
     with runner.isolated_filesystem():
         with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
             # Write the cleaned config to a file
             with open("test_cleaned.conf", "w") as f:
                 f.write(cleaned_config)
-            
+
             # Run the CLI with the cleaned config
             res = runner.invoke(
                 cli, ["TestShutter", "--press", "up", "--press", "down", "--config", "test_cleaned.conf"], catch_exceptions=False,
             )
-            
-            
+
+
             # Check that new format files were created
             assert Path("test_cleaned.toml").exists()
             assert Path("test_cleaned.json").exists()
-            
+
             # Check the contents of the migrated files
             with open("test_cleaned.toml", "r") as f:
                 toml_content = f.read()
 
-            
+
             with open("test_cleaned.json", "r") as f:
                 json_content = f.read()
 
@@ -116,4 +115,3 @@ EnableDiscovery=true
     assert "shutters" in json_content
     assert "schedule" in json_content
     assert "TestShutter" in json_content
-    

@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0  # Use the latest stable version
+    hooks:
+      - id: trailing-whitespace  # Removes trailing whitespace
+      - id: end-of-file-fixer   # Ensures files end with a newline
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.6  # Match your Ruff version if known, or use latest
+    hooks:
+      - id: ruff
+        args: [--fix-only]  # Automatically fix issues where possible
+
+exclude: '^(frontend/public/|html/)'

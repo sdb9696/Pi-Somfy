@@ -14,49 +14,49 @@ except ImportError:
 LOGGER = logging.getLogger(__name__)
 
 GENERAL_PARAMETERS = {
-    'LogLocation': str, 
-    'LogToConsole': bool, 
-    'Latitude': float, 
-    'Longitude': float, 
-    'SendRepeat': int, 
-    'TXGPIO': int, 
-    'Rfm69ResetGPIO': int, 
-    'Rfm69SPIChannel': int, 
-    'Rfm69Enabled': bool, 
-    'PIGPIOHost': str, 
+    'LogLocation': str,
+    'LogToConsole': bool,
+    'Latitude': float,
+    'Longitude': float,
+    'SendRepeat': int,
+    'TXGPIO': int,
+    'Rfm69ResetGPIO': int,
+    'Rfm69SPIChannel': int,
+    'Rfm69Enabled': bool,
+    'PIGPIOHost': str,
     'PIGPIOPort': int,
-    'UseHttps': bool, 
-    'HTTPPort': int, 
-    'HTTPSPort': int,     
-    'RTS_Address': str, 
+    'UseHttps': bool,
+    'HTTPPort': int,
+    'HTTPSPort': int,
+    'RTS_Address': str,
     "Password": str
 }
 MQQT_PARAMETERS = {
-    'MQTT_Server': str, 
-    'MQTT_Port': int, 
-    'MQTT_User': str, 
-    'MQTT_Password': str, 
-    'MQTT_ClientID': str, 
+    'MQTT_Server': str,
+    'MQTT_Port': int,
+    'MQTT_User': str,
+    'MQTT_Password': str,
+    'MQTT_ClientID': str,
     'EnableDiscovery': bool
 }
 
 CONFIG_COMMENTS = {
     'LogLocation': ['location of log files (required)'],
     'Latitude': [
-        'PUT YOUR OWN COORDINATES HERE', 
-        'Latitude of the place for computation of sunset and sunrise.', 
+        'PUT YOUR OWN COORDINATES HERE',
+        'Latitude of the place for computation of sunset and sunrise.',
         'check on Google Maps for instance'
     ],
     'Longitude': [
-        'PUT YOUR OWN COORDINATES HERE', 
-        'Longitude of the place for computation of sunset and sunrise.', 
+        'PUT YOUR OWN COORDINATES HERE',
+        'Longitude of the place for computation of sunset and sunrise.',
         'check on Google Maps for instance'
     ],
     'SendRepeat': [
         'Repeat each command a certain number of times. This is to ensure it works',
         'if the remote is far away from the shutter and sometime EMI prevents a',
         'signal to go through',
-        'This option only applies if a shutter is raised or lowered in full. If', 
+        'This option only applies if a shutter is raised or lowered in full. If',
         'a shutter is only raised or lowered for a given amount of seconds, this',
         'option does not apply for obvious reasons.'
     ],
@@ -65,17 +65,17 @@ CONFIG_COMMENTS = {
         'emitter is connected to. The default value is 4'
     ],
     'Rfm69ResetGPIO': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to', 
+        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
         'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
         'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
     ],
     'Rfm69SPIChannel': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to', 
+        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
         'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
         'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
     ],
     'Rfm69Enabled': [
-        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to', 
+        '(Optional) These parameters configure the GPIO connectors for an RFM69HCW to',
         'to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO',
         'value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True'
     ],
@@ -98,9 +98,9 @@ CONFIG_COMMENTS = {
         '443. Uncomment and change this value to use a non-standard port for HTTPS'
     ],
     'RTS_Address': [
-        'Lowest identifier used by the tool to assign unique 24bit', 
+        'Lowest identifier used by the tool to assign unique 24bit',
         'ids for new remote. This value won\'t change in the config file, instead',
-        'the tool will look for the next available address that has not been', 
+        'the tool will look for the next available address that has not been',
         'used yet.',
         'If you are running more than one instance of PiSomfy you must ensure',
         'each instance is set to a different value to avoid possible conflicts'
@@ -203,8 +203,8 @@ class MyConfig:
                     LOGGER.exception(f"Missing config file or config file entries in Section {section} for key {key}: {e1}")
                     return False
 
- 
-        shutters = config.items("Shutters");
+
+        shutters = config.items("Shutters")
         for key, value in shutters:
             try:
                 name, active, down_duration = value.split(",",2)
@@ -213,7 +213,7 @@ class MyConfig:
 
                 if active.lower() == 'true':
                    if not down_duration:
-                       down_duration ="10";
+                       down_duration ="10"
                    elif int(down_duration) <= 0 or int(down_duration) >= 100:
                        down_duration = "10"
                    param2 = self.read_value(config, "ShutterRollingCodes",key, return_type=int)
@@ -235,7 +235,7 @@ class MyConfig:
                 LOGGER.exception("Missing config file or config file entries in Section Shutters for key "+key+": " + str(e1))
                 return False
 
-        schedules = config.items("Scheduler");
+        schedules = config.items("Scheduler")
         for key, value in schedules:
             try:
                 param = value.split(",")
@@ -244,7 +244,7 @@ class MyConfig:
             except Exception as e1:
                 LOGGER.exception("Missing config file or config file entries in Section Scheduler for key "+key+": " + str(e1))
                 return False
-    
+
         return True
 
     #---------------------MyConfig::ReadValue-----------------------------------
@@ -267,7 +267,7 @@ class MyConfig:
 
         doc = self._create_new_toml()
         toml_dump = dumps(doc)
-        
+
         shutters_schedule_dump = {
             "shutters": self.shutters,
             "schedule": self.schedule
@@ -308,7 +308,7 @@ class MyConfig:
         with open(self.toml_path, 'r') as f:
             toml_string = f.read()
         toml = parse(toml_string)
-        
+
         for section, params in [("general", GENERAL_PARAMETERS), ("mqtt", MQQT_PARAMETERS)]:
             for key in params:
                 try:
@@ -343,7 +343,7 @@ class MyConfig:
         except Exception as e:
             LOGGER.exception(f"Error loading config: {str(e)}")
             return False
-                                   
+
     def set_location(self, lat: float, lng: float):
         """Set location coordinates and save to config.
 
@@ -376,7 +376,7 @@ class MyConfig:
             json_dict['shutters'][shutter_id]['code'] = code
             with open(self.json_path, 'w') as f:
                 json.dump(json_dict, f, indent=2)
-        
+
     def set_shutter(self, shutter_id: str, name: str, duration: str):
         """Set shutter name and duration and save to config.
 
@@ -417,7 +417,7 @@ class MyConfig:
                 if tmp_id == int(key, 16):
                     conflict = True
         shutter_id = "0x%0.2X" % tmp_id
-        
+
         shutter = {
             "name": name,
             "code": 1,
@@ -433,7 +433,7 @@ class MyConfig:
 
         self.shutters_by_name[name] = shutter_id
         self.shutters[shutter_id] = shutter
-    
+
     @contextmanager
     def json_config(self):
         # Code to acquire resource, e.g.:
@@ -445,7 +445,7 @@ class MyConfig:
         finally:
             with open(self.json_path, 'w') as f:
                 json.dump(json_dict, f, indent=2)
-            
+
     def set_shutter_active(self, shutter_id: str, active: bool):
         """Set shutter active status and save to config.
 

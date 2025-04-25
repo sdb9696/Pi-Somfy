@@ -28,13 +28,10 @@ THE SOFTWARE.
 # TODO(semartin): investigate time.sleep usage in here...
 
 import email.utils
-import requests
 import select
 import socket
 import struct
-import sys
 import time
-import urllib
 import uuid
 import logging
 
@@ -64,7 +61,7 @@ SETUP_XML ="""<?xml version=1.0?>
                       <eventSubURL>/upnp/event/basicevent1</eventSubURL>
                       <SCPDURL>/eventservice.xml</SCPDURL>
                   </service>
-              </serviceList> 
+              </serviceList>
               </device>
             </root>"""
 
@@ -188,7 +185,7 @@ class UPNPDevice:
         message += "\r\n"
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         temp_socket.sendto(bytes(message, 'UTF-8'), destination)
-        #print("Responding to search-->" + message )    
+        #print("Responding to search-->" + message )
 
 # This subclass does the bulk of the work to mimic a WeMo switch on the network.
 
@@ -220,7 +217,7 @@ class FauxMo(UPNPDevice):
         # LOGGER.debug("################################## END    handle_request #######################")
         data = data.decode('utf-8')
         success = False
-        
+
         if data.find('GET /setup.xml HTTP/1.1') == 0:
             LOGGER.info("Responding to setup.xml for %s" % self.name)
             xml = SETUP_XML % {'device_name' : self.name, 'device_serial' : self.serial}
@@ -237,11 +234,11 @@ class FauxMo(UPNPDevice):
                        "%s" % (len(xml), date_str, xml))
             socket.send(bytes(message, 'UTF-8'))
             #print("responsed to setup-->" + message)
-        
+
         elif data.find('SOAPACTION: "urn:Belkin:service:basicevent:1#SetBinaryState"') != -1:
         #elif data.find('urn:Belkin:service:basicevent:1') != -1:
         #elif data.find("SetBinaryState") != -1:
-            
+
             if data.find('SetBinaryState') != -1:
                 if data.find('<BinaryState>1</BinaryState>') != -1:
                     # on
@@ -256,12 +253,12 @@ class FauxMo(UPNPDevice):
                 else:
                     LOGGER.info("Unknown Binary State request:")
                     LOGGER.info(data)
-                                
+
             if success:
                 # The echo is happy with the 200 status code and doesn't
                 # appear to care about the SOAP response body
                 #LOGGER.info("Unknown Binary State request:")
-                soap = "" 
+                soap = ""
                 date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
                 message = ("HTTP/1.1 200 OK\r\n"
                            "CONTENT-LENGTH: %d\r\n"
@@ -274,7 +271,7 @@ class FauxMo(UPNPDevice):
                            "\r\n"
                            "%s" % (len(soap), date_str, soap))
                 socket.send(bytes(message, 'UTF-8'))
-                
+
         elif data.find('GetBinaryState'):
             #if data.find('<BinaryState>1</BinaryState>') != -1:
             #    switch_sate="1"
@@ -286,9 +283,9 @@ class FauxMo(UPNPDevice):
                     xmlns:u="urn:Belkin:service:basicevent:1">
                     <BinaryState>"""+ str(self.switch_status) +"""</BinaryState>
                     </u:GetBinaryStateResponse>
-                </s:Body></s:Envelope>""" 
-            
-            
+                </s:Body></s:Envelope>"""
+
+
             date_str = email.utils.formatdate(timeval=None, localtime=False, usegmt=True)
             message = ("HTTP/1.1 200 OK\r\n"
                        "CONTENT-LENGTH: %d\r\n"
@@ -431,5 +428,3 @@ class DebounceHandler(object):
 
         self.last_echo = time.time()
         return False
-
-

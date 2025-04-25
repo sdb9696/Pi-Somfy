@@ -6,15 +6,8 @@
 ##############################################################################################
 
 
-import sys, re, argparse
-import fcntl
-import os
-import re
+import sys
 import time
-import locale
-import pigpio
-import socket
-import signal, atexit, subprocess, traceback
 import threading
 import logging
 
@@ -37,7 +30,7 @@ class DeviceHandler(DebounceHandler):
         self.shutter = shutter
         self.config = config
         super(DeviceHandler, self).__init__()
-    
+
     def act(self, client_address, state, name):
         LOGGER.info("--> State " + str(state) + " on " + name + " from client @ " + client_address)
         shutter_id = self.config.shutters_by_name[name]
@@ -53,14 +46,14 @@ class Alexa(threading.Thread, DebounceHandler):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="Alexa")
         self.shutdown_flag = threading.Event()
-        
+
         self.args = args
         self.kwargs = kwargs
         if kwargs["shutter"] != None:
             self.shutter = kwargs["shutter"]
         if kwargs["config"] != None:
             self.config = kwargs["config"]
-        
+
         # Startup the fauxmo server
         self.poller = fauxmo.Poller()
         self.upnp_responder = fauxmo.UPNPBroadcastResponder()
@@ -73,7 +66,7 @@ class Alexa(threading.Thread, DebounceHandler):
             port_id = 50000 + (abs(int(shutter_id,16)) % 10000)
             LOGGER.info ("Remote address in dec: " + str(int(shutter_id,16)) + ", WeMo port will be n°" + str(port_id))
             fauxmo.FauxMo(shutter, self.upnp_responder, self.poller, None, port_id, dbh)
-                        
+
         return
 
     def run(self):
@@ -93,8 +86,6 @@ class Alexa(threading.Thread, DebounceHandler):
 #                if(error > 5):
 #                    LOGGER.error("Sixth critical error:" + str(e.args))
 #                    break
-            
+
         LOGGER.error("Received Signal to shut down Alexa thread")
         return
-
- 

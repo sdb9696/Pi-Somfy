@@ -13,7 +13,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },  
+  },
   server: {
     proxy: {
       // Proxy API requests to Flask during development
@@ -32,7 +32,7 @@ export default defineConfig({
         entryFileNames: `assets/[name].min.js`,
         chunkFileNames: `assets/[name].min.js`,
         assetFileNames: `assets/[name].min.[ext]`
-      }    
+      }
     }
   }
 })

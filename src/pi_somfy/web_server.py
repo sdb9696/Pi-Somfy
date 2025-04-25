@@ -4,13 +4,16 @@ import threading
 import re
 from .config import MyConfig
 try:
-    from flask import Flask, render_template, request, Response, jsonify, json
+    from flask import Flask, request, Response, json
 except Exception as e1:
     print("\n\nThis program requires the Flask library. Please see the project documentation at https://github.com/Nickduino/Pi-Somfy.\n")
     print("Error: " + str(e1))
     sys.exit(2)
 
-import sys, signal, os, socket, atexit, time, subprocess, threading, signal, errno, collections, traceback
+import sys
+import os
+import atexit
+import traceback
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ class EndpointAction():
     def __call__(self, *args, **kwargs):
         if ((len(args) > 0) or (len(kwargs) > 0)):
             self.response = self.action(args, kwargs)
-        else:   
+        else:
             self.response = self.action()
         return self.response
 
@@ -39,31 +42,31 @@ class FlaskAppWrapper(threading.Thread):
         threading.Thread.__init__(self, name="Web Server")
 
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    
+
         self.shutter = shutter
         self.schedule = schedule
         self.config = config
-        
+
         self.app = Flask(import_name=name, static_url_path="", static_folder=static_url_path)
         self.app.after_request(self.add_header)
         self.add_endpoint(endpoint='/', endpoint_name='main', handler=self.request_main)
         self.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=self.shutdown_server)
         self.add_endpoint(endpoint='/cmd/<command>', endpoint_name='cmd', handler=self.process_command, methods=['GET', 'POST'])
-        
+
     def isfloat(self, value):
         try:
             float(value)
             return True
         except ValueError:
             return False
-        
+
     def add_header(self, r):
         r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, public, max-age=0"
         r.headers["Pragma"] = "no-cache"
         r.headers["Expires"] = "0"
 
         return r
-        
+
     def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, methods=['GET']):
         self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler), methods=methods)
 
@@ -72,7 +75,7 @@ class FlaskAppWrapper(threading.Thread):
             return self.app.send_static_file("error.html")
         LOGGER.debug(request.url)
         return self.app.send_static_file('index.html')
-        
+
     def process_command(self, *args, **kwargs):
         LOGGER.debug(request.url + " ( "+ request.method + " ): "+ str(args) + " | "+ str(kwargs))
         try:
@@ -118,13 +121,13 @@ class FlaskAppWrapper(threading.Thread):
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
         return Response("Shutting Down", status=400)
-        
+
     def up(self, params):
         if not self.validate_password():
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("rise shutter \""+shutter+"\"")
-        if (not shutter in self.config.shutters):
+        if (shutter not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.rise(shutter)
         return {'status': 'OK'}
@@ -134,7 +137,7 @@ class FlaskAppWrapper(threading.Thread):
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("lower shutter \""+shutter+"\"")
-        if (not shutter in self.config.shutters):
+        if (shutter not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.lower(shutter)
         return {'status': 'OK'}
@@ -144,7 +147,7 @@ class FlaskAppWrapper(threading.Thread):
             return {'status': 'ERROR'}
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("stop shutter \""+shutter+"\"")
-        if (not shutter in self.config.shutters):
+        if (shutter not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.stop(shutter)
         return {'status': 'OK'}
@@ -152,7 +155,7 @@ class FlaskAppWrapper(threading.Thread):
     def program(self, params):
         shutter=params.get('shutter', 0, type=str)
         LOGGER.debug("program shutter \""+shutter+"\"")
-        if (not shutter in self.config.shutters):
+        if (shutter not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.program(shutter)
         return {'status': 'OK'}
@@ -162,7 +165,7 @@ class FlaskAppWrapper(threading.Thread):
         buttons = params.get('buttons', 0, type=int)
         long_press = params.get('longPress', 0, type=str) == "true"
         LOGGER.debug(("long" if long_press else "short") +" press buttons: \"" +str(buttons)+ "\" shutter \""+shutter+"\"")
-        if (not shutter in self.config.shutters):
+        if (shutter not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         self.shutter.press_buttons(shutter, buttons, long_press)
         return {'status': 'OK'}
@@ -180,7 +183,7 @@ class FlaskAppWrapper(threading.Thread):
             name = unicodedata.normalize('NFKD', name).encode('ascii','ignore')
             duration = params.get('duration', 0, type=unicode)
             duration = unicodedata.normalize('NFKD', duration).encode('ascii','ignore')
-        else: 
+        else:
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
         LOGGER.debug("add shutter: "+ name)
@@ -208,7 +211,7 @@ class FlaskAppWrapper(threading.Thread):
             name = params.get('name', 0, type=str)
             duration = params.get('duration', 0, type=str)
         LOGGER.debug("edit shutter: "+id+" / "+name)
-        if (not id in self.config.shutters):
+        if (id not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         elif ((name == self.config.shutters[id]['name']) and (duration == self.config.shutters[id]['durationDown'])):
             return {'status': 'ERROR', 'message': 'Neither Name nor Duration has not changed, remaining the same.'}
@@ -226,7 +229,7 @@ class FlaskAppWrapper(threading.Thread):
     def delete_shutter(self, params):
         id = params.get('id', 0, type=str)
         LOGGER.debug("delete shutter: "+id)
-        if (not id in self.config.shutters):
+        if (id not in self.config.shutters):
             return {'status': 'ERROR', 'message': 'Shutter does not exist'}
         else:
             self.config.set_shutter_active(id, False)
@@ -259,7 +262,7 @@ class FlaskAppWrapper(threading.Thread):
         id = params.get('id', type=str)
         if not id:
             return {'status': 'ERROR', 'message': 'Schedule ID is required'}
-        
+
         try:
             active, repeat_type, repeat_value, time_type, time_value, shutter_action, shutter_ids = self._get_schedule_params(params)
         except ValueError as e:
@@ -270,15 +273,15 @@ class FlaskAppWrapper(threading.Thread):
 
     def _get_schedule_params(self, params):
         param_values = {key: params.get(key) for key in ['active', 'repeatType', 'repeatValue', 'timeType', 'timeValue', 'shutterAction', 'shutterIds']}
-        param_values['shutterIds'] = params.getlist('shutterIds[]')  
+        param_values['shutterIds'] = params.getlist('shutterIds[]')
         if param_values['repeatType'] != "once":
-            param_values['repeatValue'] = params.getlist('repeatValue[]')        
+            param_values['repeatValue'] = params.getlist('repeatValue[]')
         missing_params = [key for key, val in param_values.items() if not val]
         if missing_params:
             raise ValueError(f"Missing or empty parameter values: {', '.join(missing_params)}")
-        
+
         return (param_value for param_value in param_values.values())
-    
+
     def delete_schedule(self, params):
         id = params.get('id', 0, type=str)
         LOGGER.debug("delete schedule: "+id)
@@ -299,9 +302,8 @@ class FlaskAppWrapper(threading.Thread):
         import ssl
         from OpenSSL import crypto
         import tempfile
-        import atexit
         from random import random
-        
+
         cert = crypto.X509()
         cert.set_serial_number(int(random() * sys.maxsize))
         cert.gmtime_adj_notBefore(0)
@@ -324,7 +326,7 @@ class FlaskAppWrapper(threading.Thread):
         pkey_handle, pkey_file = tempfile.mkstemp()
         atexit.register(os.remove, pkey_file)
         atexit.register(os.remove, cert_file)
-    
+
         os.write(cert_handle, crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
         os.write(pkey_handle, crypto.dump_privatekey(crypto.FILETYPE_PEM, pkey))
         os.close(cert_handle)
@@ -345,8 +347,3 @@ class FlaskAppWrapper(threading.Thread):
             LOGGER.info("Starting WebServer on Port "+str(self.config.HTTPPort))
             self.app.run(host="0.0.0.0", threaded = True, port=self.config.HTTPPort, use_reloader = False, debug = False)
         LOGGER.info("Stopping WebServer")
-
-
-
-
-

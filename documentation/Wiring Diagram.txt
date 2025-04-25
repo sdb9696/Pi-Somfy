@@ -28,6 +28,3 @@ TX:
    GND > PIN 09 (GND)
    VCC > PIN 02 (5V)
   DATA > PIN 11 (GPIO17)
-
-
-

@@ -30,7 +30,7 @@ function App() {
       try {
         const data = await getConfig();
         setConfig(data);
-        
+
         if (!activeKey) {
           // Determine which panel to open by default
           if (Object.keys(data.Shutters).length === 0) {
@@ -39,7 +39,7 @@ function App() {
             setActiveKey('manual');
           }
         }
-        
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching config:', error);
@@ -70,7 +70,7 @@ function App() {
           <ThemeToggle />
         </div>
       </div>
-      
+
       <Tabs defaultValue={activeKey || "manual"} onValueChange={(val) => setActiveKey(val)} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-4 h-auto">
           <TabsTrigger value="manual" className="flex flex-col sm:flex-row items-center gap-1 h-full py-2">

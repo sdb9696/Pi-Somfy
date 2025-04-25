@@ -20,20 +20,19 @@ def create_pigpio_connection(
         def __init__(self):
             super().__init__()
             self.pi = None
-    
+
         def run(self):
             try:
                 self.pi = pigpio.pi(pigpiohost, pigpioport, False)
             except Exception as e:
                 print(f"Error creating pigpio connection: {e}")
-            
+
     pi_thread = CreatePiThread()
     pi_thread.start()
     pi_thread.join(timeout)
-    
+
     if pi_thread.is_alive():
         pi_thread.join(0)  # Force termination if still running
         raise TimeoutError(f"Connection to pigpiod at {pigpiohost}:{pigpioport} timed out after {timeout} seconds.")
-    
-    return pi_thread.pi
 
+    return pi_thread.pi

@@ -99,4 +99,3 @@ MQTT_ClientID = "somfy-mqtt-bridge"
 # mqtt:
 #   discovery: true
 EnableDiscovery = true
-

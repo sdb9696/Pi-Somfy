@@ -17,7 +17,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
   const handleCommand = async (shutterId: string, command: 'up' | 'down' | 'stop') => {
     // Set loading state for this specific button
     setLoading({...loading, [shutterId+command]: 'loading'});
-    
+
     try {
       await sendCommand(shutterId, command);
     } catch (error) {
@@ -45,7 +45,7 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                   <div className="line-clamp-2 w-full pt-1">{name || 'Unnamed Shutter'}</div>
                 </div>
                 <div className="control-buttons flex flex-col gap-3 items-center">
-                  <Button 
+                  <Button
                     variant="ghost"
                     className="p-0 relative rounded-md hover:bg-gray-100"
                     onClick={() => handleCommand(id, 'up')}
@@ -58,8 +58,8 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                       </div>
                     )}
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="p-0 relative rounded-md hover:bg-gray-100"
                     variant="ghost"
                     onClick={() => handleCommand(id, 'stop')}
@@ -72,8 +72,8 @@ const ManualOperation = ({ shutters }: ManualOperationProps) => {
                       </div>
                     )}
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="p-0 relative rounded-md hover:bg-gray-100"
                     variant="ghost"
                     onClick={() => handleCommand(id, 'down')}

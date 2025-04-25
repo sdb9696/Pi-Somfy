@@ -2,15 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 
-import sys, re, argparse
-import fcntl
-import os
-import re
+import sys
 import time
-import locale
-import pigpio
-import socket
-import signal, atexit, subprocess, traceback
 import threading
 import json
 import logging
@@ -59,20 +52,20 @@ class DiscoveryMsg():
 
 
 class MQTT(threading.Thread):
-    connected_flag = False    
-    
+    connected_flag = False
+
     def __init__(self, group=None, target=None, name=None, args=(), kwargs=None):
         threading.Thread.__init__(self, group=group, target=target, name="MQTT")
         self.shutdown_flag = threading.Event()
 
-        self.t = ()        
+        self.t = ()
         self.args = args
         self.kwargs = kwargs
         if kwargs["shutter"] != None:
             self.shutter = kwargs["shutter"]
         if kwargs["config"] != None:
             self.config = kwargs["config"]
-            
+
         return
 
     def receive_message_from_mqtt(self, client, userdata, message):
@@ -81,7 +74,7 @@ class MQTT(threading.Thread):
             msg = str(message.payload.decode("utf-8"))
             topic = message.topic
             LOGGER.info("message received from MQTT: "+topic+" = "+msg)
-    
+
             [prefix, shutter_id, property, command] = topic.split("/")
             if (command == "cmd"):
                 LOGGER.info("sending message: "+str(msg))
@@ -99,10 +92,10 @@ class MQTT(threading.Thread):
                         self.shutter.lower_partial(shutter_id, int(msg))
             else:
                 LOGGER.error("received unkown message: "+topic+", message: "+msg)
-    
+
         except Exception as e1:
             LOGGER.error("Exception Occured: " + str(e1))
-    
+
         LOGGER.info("finishing receive_message_from_mqtt")
 
     def send_mqtt(self, topic, msg):
@@ -126,7 +119,7 @@ class MQTT(threading.Thread):
         else:
             print("Bad connection Returned code= ",rc)
             self.connected_flag=False
-            
+
     def on_disconnect(self, client, userdata, rc=0):
         self.connected_flag=False
         if rc != 0:
@@ -193,5 +186,3 @@ class MQTT(threading.Thread):
 
         LOGGER.error("Received Signal to shut down MQTT thread")
         return
-
- 

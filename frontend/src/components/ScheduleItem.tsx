@@ -23,7 +23,7 @@ interface ScheduleRowProps {
     onError?: (error: string) => void;
     onAddComplete?: () => void;
   }
-  
+
 const ScheduleItem = ({
     id,
     schedule,
@@ -37,38 +37,38 @@ const ScheduleItem = ({
   const [isEditing, setIsEditing] = useState(false || isNew);
 
   const [localSchedule, setLocalSchedule] = useState<Schedule>({...schedule});
-  
+
   useEffect(() => {
     setLocalSchedule({...schedule});
   }, [schedule]);
-  
-  
+
+
 
   const formatScheduleDescription = (): string => {
     let output = '';
-    
+
     if (localSchedule.active === 'paused') {
       output += 'This schedule is currently paused. ';
     }
-    
+
     if (localSchedule.repeatType === 'weekday') {
       const repeatValue = localSchedule.repeatValue as string[];
       const fullWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const weekend = ['Sat', 'Sun'];
       const weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-      
+
       const sortedRepeatValue = [...repeatValue].sort();
       const sortedFullWeek = [...fullWeek].sort();
       const sortedWeekend = [...weekend].sort();
       const sortedWeekday = [...weekday].sort();
-      
-      const isFullWeek = sortedRepeatValue.length === sortedFullWeek.length && 
+
+      const isFullWeek = sortedRepeatValue.length === sortedFullWeek.length &&
         sortedRepeatValue.every((value, index) => value === sortedFullWeek[index]);
-      const isWeekend = sortedRepeatValue.length === sortedWeekend.length && 
+      const isWeekend = sortedRepeatValue.length === sortedWeekend.length &&
         sortedRepeatValue.every((value, index) => value === sortedWeekend[index]);
-      const isWeekday = sortedRepeatValue.length === sortedWeekday.length && 
+      const isWeekday = sortedRepeatValue.length === sortedWeekday.length &&
         sortedRepeatValue.every((value, index) => value === sortedWeekday[index]);
-      
+
       if (isFullWeek) {
         output += 'Everyday, ';
       } else if (isWeekend) {
@@ -81,7 +81,7 @@ const ScheduleItem = ({
     } else if (localSchedule.repeatType === 'once') {
       output += `On ${localSchedule.repeatValue as string}, `;
     }
-    
+
     if (localSchedule.timeType === 'clock') {
       output += `at ${localSchedule.timeValue}, `;
     } else if (localSchedule.timeType === 'astro') {
@@ -105,7 +105,7 @@ const ScheduleItem = ({
         }
       }
     }
-    
+
     if (localSchedule.shutterAction.startsWith('up')) {
       output += 'rise ';
       const percentage = parseInt(localSchedule.shutterAction.substring(2));
@@ -121,22 +121,22 @@ const ScheduleItem = ({
     } else if (localSchedule.shutterAction.startsWith('stop')) {
       output += 'stop (my) ';
     }
-    
+
     if (localSchedule.shutterIds.length === 1) {
         output += `the shutter "${shutters[localSchedule.shutterIds[0]]}".`;
       } else {
         output += `these shutters "${localSchedule.shutterIds.map(id => shutters[id]).join('", "')}".`;
       }
-    
+
     return output;
   };
-  
-  
+
+
   const startEditing = () => {
     setIsEditing(true);
   };
-  
-  
+
+
   const cancelEditing = () => {
     setIsEditing(false);
     if (isNew) {
@@ -149,18 +149,18 @@ const ScheduleItem = ({
     if (localSchedule.shutterIds.length === 0) {
       onError && onError('Please select at least one shutter');
       return;
-    }    
+    }
     if (isNew) {
       await handleAddSchedule();
     } else {
       await handleEdit();
     }
   };
-  
+
   const handleEdit = async () => {
     try {
       const result = await editSchedule(id, localSchedule);
-      
+
       setIsEditing(false);
 
       if (result.status === 'OK') {
@@ -179,7 +179,7 @@ const ScheduleItem = ({
   const handleAddSchedule = async () => {
     try {
       const result = await addSchedule(localSchedule);
-      
+
       setIsEditing(false);
 
       if (isNew) {
@@ -196,10 +196,10 @@ const ScheduleItem = ({
       console.error('Error adding schedule:', error);
     }
   };
-  
+
   const handleDelete = async () => {
     if (isNew) return;
-    
+
     try {
       await deleteSchedule(id);
 
@@ -212,11 +212,11 @@ const ScheduleItem = ({
     }
   };
 
-   
+
   // Handle UI updates for schedule form
   const handleTimeTypeChange = (type: string) => {
     let timeValue = '';
-    
+
     if (type === 'clock') {
       timeValue = '09:00';
     } else if (type === 'sunrise') {
@@ -226,10 +226,10 @@ const ScheduleItem = ({
     }
     setLocalSchedule({...localSchedule, timeType: type === 'clock' ? 'clock' : 'astro', timeValue: timeValue});
   };
-  
+
   const handleRepeatTypeChange = (type: string) => {
     let repeatValue: string | string[] = '';
-    
+
     if (type === 'weekday') {
       repeatValue = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     } else if (type === 'once') {
@@ -240,14 +240,14 @@ const ScheduleItem = ({
       const day = String(today.getDate()).padStart(2, '0');
       repeatValue = `${year}/${month}/${day}`;
     }
-    
+
     setLocalSchedule({...localSchedule, repeatType: type, repeatValue: repeatValue});
   };
-  
+
   const handleAstroOffsetChange = (value: number) => {
     const timeTypePrefix = localSchedule.timeValue.startsWith('sunrise') ? 'sunrise' : 'sunset';
     let timeValue = timeTypePrefix;
-    
+
     if (value > 0) {
       timeValue += `+${value}`;
     } else if (value < 0) {
@@ -255,7 +255,7 @@ const ScheduleItem = ({
     }
     setLocalSchedule({...localSchedule, timeValue: timeValue});
   };
-  
+
   const getAstroOffsetValue = (timeValue: string) => {
     if (timeValue.startsWith('sunrise')) {
       const offset = timeValue.substring(7);
@@ -266,7 +266,7 @@ const ScheduleItem = ({
     }
     return 0;
   };
-  
+
   const handleShutterActionChange = (action: string, percentage: number = 0) => {
     let shutterAction = action;
     if (percentage > 0) {
@@ -274,7 +274,7 @@ const ScheduleItem = ({
     }
     setLocalSchedule({...localSchedule, shutterAction: shutterAction});
   };
-  
+
   const getPercentageFromAction = (action: string) => {
     if (action.startsWith('up')) {
       return parseInt(action.substring(2) || '0');
@@ -283,13 +283,13 @@ const ScheduleItem = ({
     }
     return 0;
   };
-  
+
   const renderScheduleForm = (isNew: boolean = false) => {
     const currentAction = localSchedule.shutterAction.startsWith('up') ? 'up' :
                           localSchedule.shutterAction.startsWith('down') ? 'down' : 'stop';
     const percentage = getPercentageFromAction(localSchedule.shutterAction);
     const astroOffset = getAstroOffsetValue(localSchedule.timeValue);
-    
+
     return (
       <div className="p-3 border rounded-md mb-2">
         <div className="flex flex-wrap gap-4">
@@ -304,14 +304,14 @@ const ScheduleItem = ({
                 }}
               />
               <Label htmlFor={`active-${isNew ? 'new' : id}`} className="relative inline-flex items-center cursor-pointer">
-                  {localSchedule.active === 'active' ? 
-                    <><Play className="w-5 h-5 mr-1" /> Active</> : 
+                  {localSchedule.active === 'active' ?
+                    <><Play className="w-5 h-5 mr-1" /> Active</> :
                     <><Pause className="w-5 h-5 mr-1" /> Paused</>
                   }
               </Label>
             </div>
           </div>
-          
+
           {/* Time Type & Value */}
           <div className="flex-1 min-w-[200px]">
             <div className="flex items-start gap-2">
@@ -323,7 +323,7 @@ const ScheduleItem = ({
                   size="icon"
                   className="h-8 w-8 p-1"
                   onClick={() => {
-                    const nextType = localSchedule.timeType === 'clock' ? 'sunrise' : 
+                    const nextType = localSchedule.timeType === 'clock' ? 'sunrise' :
                     localSchedule.timeValue.startsWith('sunrise') ? 'sunset' : 'clock';
                     handleTimeTypeChange(nextType);
                   }}
@@ -337,7 +337,7 @@ const ScheduleItem = ({
                   )}
                 </Button>
               </div>
-              
+
               {/* Time Value Controls */}
               <div className="flex-1">
                 {localSchedule.timeType === 'clock' && (
@@ -353,7 +353,7 @@ const ScheduleItem = ({
                     />
                   </div>
                 )}
-                
+
                 {localSchedule.timeType === 'astro' && (
                   <div className="mb-2">
                     <Label className="text-xs font-medium mb-1">
@@ -379,7 +379,7 @@ const ScheduleItem = ({
               </div>
             </div>
           </div>
-          
+
           {/* Repeat Type & Value */}
           <div className="flex-1 min-w-[200px]">
             <div className="flex items-start gap-2">
@@ -402,7 +402,7 @@ const ScheduleItem = ({
                   )}
                 </Button>
               </div>
-              
+
               {/* Repeat Value Controls */}
               <div className="flex-1">
                 {localSchedule.repeatType === 'weekday' && (
@@ -421,13 +421,13 @@ const ScheduleItem = ({
                           onClick={() => {
                             const currentDays = Array.isArray(localSchedule.repeatValue) ? [...localSchedule.repeatValue] : [];
                             let newDays;
-                            
+
                             if (currentDays.includes(day)) {
                               newDays = currentDays.filter(d => d !== day);
                             } else {
                               newDays = [...currentDays, day];
                             }
-                            
+
                             setLocalSchedule({...localSchedule, repeatValue: newDays});
                           }}
                         >
@@ -437,7 +437,7 @@ const ScheduleItem = ({
                     </div>
                   </div>
                 )}
-                
+
                 {localSchedule.repeatType === 'once' && (
                   <div className="mb-2">
                     <Label className="text-xs font-medium mb-1 text-muted-foreground">Date</Label>
@@ -454,7 +454,7 @@ const ScheduleItem = ({
               </div>
             </div>
           </div>
-          
+
           {/* Shutter Action & Selection */}
           <div className="flex-1 min-w-[250px]">
             <div className="flex items-start gap-3">
@@ -496,7 +496,7 @@ const ScheduleItem = ({
                   </Button>
                 </div>
               </div>
-              
+
               {/* Percentage & Shutter Selection */}
               <div className="flex-1">
                 {currentAction !== 'stop' && (
@@ -529,7 +529,7 @@ const ScheduleItem = ({
                     </Select>
                   </div>
                 )}
-                
+
                 <div className="mb-2">
                   <Label className="text-xs font-medium mb-1 text-muted-foreground">Shutters</Label>
                   <div>
@@ -581,9 +581,9 @@ const ScheduleItem = ({
             <Button variant="ghost" size="icon" onClick={handleSave} className="h-8 w-8" title={isNew ? "Add" : "Save"}>
               <Save className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={cancelEditing}
               className="h-8 w-8"
               title="Cancel"
@@ -593,9 +593,9 @@ const ScheduleItem = ({
           </div>
         ) : (
           <div className="d-flex gap-2 justify-content-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={startEditing}
               className="h-8 w-8"
               title="Edit"
@@ -604,9 +604,9 @@ const ScheduleItem = ({
             </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-8 w-8"
                   title="Delete"
                 >
@@ -616,7 +616,7 @@ const ScheduleItem = ({
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Confirm Delete</DialogTitle>
-                </DialogHeader>                
+                </DialogHeader>
                   Are you sure you want to delete this schedule?
                 <DialogFooter>
                   <DialogClose asChild>
@@ -627,7 +627,7 @@ const ScheduleItem = ({
                   <Button variant="destructive" onClick={ handleDelete }>
                     Delete
                   </Button>
-                </DialogFooter>                
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>

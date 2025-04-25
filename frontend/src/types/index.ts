@@ -3,7 +3,7 @@ export interface Shutter {
     name: string;
     duration: string;
   }
-  
+
 export interface Schedule {
     id: string;
     active: string;
@@ -15,7 +15,7 @@ export interface Schedule {
     shutterIds: string[];
     isEditing?: boolean;
 }
-  
+
     // This matches the actual data structure
 export interface Config {
     Longitude: number;

@@ -1,22 +1,13 @@
 #!/usr/bin/python3
 
 import sys
-import re
-import argparse
 import fcntl
 import os
-import locale
 import time
-import datetime
-import ephem
 import pigpio
-import signal
-import atexit
-import traceback
 import logging
 import logging.handlers
 import threading
-import getpass
 import click
 import subprocess
 from typing import Optional, List, Tuple
@@ -24,13 +15,11 @@ from pathlib import Path
 
 try:
     from .config import MyConfig
-    from .myscheduler import Event
     from .myscheduler import Schedule
     from .myscheduler import Scheduler
     from .web_server import FlaskAppWrapper
     from .alexa import Alexa
     from .mqtt import MQTT
-    from shutil import copyfile
     from .rfm69_transmitter import SomfyRfm69Tx
     from .rts_wave_form import create_wave_form
     from time import sleep
@@ -72,7 +61,7 @@ class Args:
         self.auto = auto
         self.echo = echo
         self.mqtt = mqtt
-        
+
 class Shutter:
     # Button values - constants should be in UPPERCASE
     BUTTON_UP = 0x2
@@ -264,15 +253,15 @@ class Shutter:
         self.callback.append(callback_function)
 
     def send_command(self, shutter_id: str, button: int, repetition: int): #Sending a frame
-    # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps 
+    # Sending more than two repetitions after the original frame means a button kept pressed and moves the blind in steps
     # to adjust the tilt. Sending the original frame and three repetitions is the smallest adjustment, sending the original
     # frame and more repetitions moves the blinds up/down for a longer time.
-    # To activate the program mode (to register or de-register additional remotes) of your Somfy blinds, long press the 
+    # To activate the program mode (to register or de-register additional remotes) of your Somfy blinds, long press the
     # prog button (at least thirteen times after the original frame to activate the registration.
         LOGGER.debug("send_command: Waiting for Lock")
         self.lock.acquire()
         try:
-            
+
             LOGGER.debug("send_command: Lock aquired")
             checksum = 0
 
@@ -292,7 +281,7 @@ class Shutter:
             if not (self.config.Rfm69Enabled):
 
                 start_time = time.time()
-                LOGGER.debug(f"Connecting to PIGPIO")
+                LOGGER.debug("Connecting to PIGPIO")
                 pi = create_pigpio_connection(self.config.PIGPIOHost, self.config.PIGPIOPort, timeout=self.config.PIGPIO_Connect_Timeout)
                 end_time = time.time()
                 LOGGER.debug(f"PIGPIO connection duration: {end_time - start_time:.3f} seconds")
@@ -305,7 +294,7 @@ class Shutter:
 
                 pi.wave_add_generic(wf)
                 wid = pi.wave_create()
-        
+
                 pi.wave_send_once(wid)
 
                 while pi.wave_tx_busy():
@@ -324,7 +313,7 @@ class Shutter:
             self.lock.release()
             LOGGER.debug("send_command: Lock released")
 
-    
+
 
 
 class OperateShutters:
@@ -363,7 +352,7 @@ class OperateShutters:
         if (args.mqtt == True):
             self.mqtt = MQTT(kwargs={'shutter': self.shutter, 'config': self.config})
 
-        self.process_command(args);
+        self.process_command(args)
 
     #------------------------ operateShutters::is_loaded -----------------------------
     #return true if program is already loaded
@@ -382,7 +371,7 @@ class OperateShutters:
                 os.chmod(file_path, new_permissions)
             fcntl.flock(file_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return False
-        except OSError as err:
+        except OSError:
             return True
 
     #--------------------- operateShutters::check_pigpio ------------------------------
@@ -395,22 +384,22 @@ class OperateShutters:
             connected = pi.connected
             if connected:
                 pi.stop()
-        except TimeoutError as e:
+        except TimeoutError:
             LOGGER.error("Could not connect to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
-        except Exception as e:
+        except Exception:
             LOGGER.exception("Could not connect to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
 
         if connected:
             LOGGER.info("Successfully connected to pigpiod on %s:%s", self.config.PIGPIOHost, self.config.PIGPIOPort)
             return
-        
+
         if self.config.PIGPIOHost != 'localhost':
             LOGGER.warning("Cannot connect to pigpiod on %s:%s, pigpiod is not running on localhost, skipping local start", self.config.PIGPIOHost, self.config.PIGPIOPort)
             return
 
         status, process = subprocess.getstatusoutput('pidof pigpiod')
         if status:  #  it wasn't running, so start it
-            
+
             if os.geteuid() == 0:
                 LOGGER.info("pigpiod was not running, trying to start it")
                 subprocess.getstatusoutput('sudo pigpiod -l -m')  # try to  start it
@@ -433,7 +422,7 @@ class OperateShutters:
                 else:
                     LOGGER.info("pigpio's connection test succesful.")
                     pi.stop()
-            except Exception as e:
+            except Exception:
                 LOGGER.exception("problem connecting to local pigpio")
         else:
             LOGGER.error("Local start of pigpiod was unsuccessful.")
@@ -450,7 +439,7 @@ class OperateShutters:
         if args.long and not args.press:
             raise click.UsageError("The --long option requires the -press option.")
         if args.auto and args.shutter_name:
-            raise click.UsageError("The --auto option can not be provided with a shutter name.")        
+            raise click.UsageError("The --auto option can not be provided with a shutter name.")
 
         # Handle shutter-specific commands
         if args.shutter_name:

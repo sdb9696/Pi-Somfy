@@ -16,9 +16,9 @@ interface ScheduleManagerProps {
 const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleManagerProps) => {
   const [message, setMessage] = useState<{ text: string, type: string } | null>(null);
   const [showNewScheduleForm, setShowNewScheduleForm] = useState(false);
-  
- 
-  
+
+
+
   // New schedule form
   const newSchedule: Schedule = {
     id: 'new',
@@ -30,18 +30,18 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
     shutterAction: 'up',
     shutterIds: []
   };
-  
+
   const onScheduleUpdate = (message: string) => {
     setMessage({ text: message, type: 'success' });
     onScheduleChange();
   };
 
-  
-  
+
+
   return (
     <div>
       <h2>Scheduled Operations</h2>
-      
+
       {message && (
         <Alert variant={message.type as any}>
           <AlertDescription>
@@ -55,11 +55,11 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
           </Button>
         </Alert>
       )}
-      
+
       {/* Add new schedule button */}
       <div className="mb-4">
-        <Button 
-          variant="default" 
+        <Button
+          variant="default"
           className="mb-3"
           onClick={() => setShowNewScheduleForm(true)}
           disabled={showNewScheduleForm}
@@ -67,7 +67,7 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
           <i className="bi bi-plus"></i> Add New Schedule
         </Button>
       </div>
-      
+
       {/* Existing schedules */}
       <Table className="border border-collapse">
         <thead>
@@ -76,7 +76,7 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
             <th className="border text-center px-2 py-2" style={{ width: '100px' }}>Actions</th>
           </tr>
         </thead>
-        <tbody>         
+        <tbody>
           {/* Existing schedule rows */}
           {Object.entries(schedules).map(([id, schedule]) => (
             <ScheduleItem
@@ -100,11 +100,11 @@ const ScheduleManager = ({ schedules, shutters, onScheduleChange }: ScheduleMana
               onAddComplete={() => setShowNewScheduleForm(false)}
               onError={(error: string) => setMessage({ text: error, type: 'error' })}
             />
-          )}          
+          )}
         </tbody>
       </Table>
-      
-      
+
+
     </div>
   );
 };

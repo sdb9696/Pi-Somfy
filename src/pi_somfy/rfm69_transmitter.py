@@ -3,13 +3,13 @@
 """
 sdb9696: Transmitter to emulate button press to Somfy blinds.
 Initially based on the transmitter.py from https://github.com/henrythasler/sdr/blob/master/somfy/transmitter.py
-Modified to use the wavefrom creation logic from https://github.com/Nickduino/Pi-Somfy/.  The waveform logic 
+Modified to use the wavefrom creation logic from https://github.com/Nickduino/Pi-Somfy/.  The waveform logic
 in the original of this files works but as I've forked Nickduino it's best to have only one way to create the
-waveform.  N.B. the two methods treated the address parameter differently as henrythasler reversed the order of 
+waveform.  N.B. the two methods treated the address parameter differently as henrythasler reversed the order of
 bytes.  I'm not sure which is correct but it doesn't as only using a single implementation.
 Also updated to fix the frequency to use 433.42 MHz as the original calculation was a bit off.
 
-If someone wanted to use this transmitter independantly of the rest of the Nickduino functionality only 
+If someone wanted to use this transmitter independantly of the rest of the Nickduino functionality only
 the following files are needed:
 
     rfm69.py
@@ -25,8 +25,6 @@ from .rfm69 import Rfm69
 import json
 from .rts_wave_form import create_wave_form
 from .pigpio_helper import create_pigpio_connection
-import threading
-import time
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,11 +34,11 @@ DATAPIN_DEFAULT = 26
 
 class SomfyRfm69Tx(object):
 
-    # define pigpio-host 
+    # define pigpio-host
     HOST = "localhost"
-   
+
     config = None
-    clock = 640    
+    clock = 640
 
     def __init__(self, reset_bcm_pin_number = RESETPIN_DEFAULT, data_bcm_pin_number = DATAPIN_DEFAULT, pigpiohost="localhost", pigpioport=8888, spichannel=0, spibaudrate=32000, pigpio_connect_timeout=None):
 
@@ -64,10 +62,10 @@ class SomfyRfm69Tx(object):
         """clean up stuff"""
         if self.piconnected:
             self.pi.stop()
-            self.piconnected = False             
+            self.piconnected = False
 
     def _start_transmit(self):
-        
+
         # prepare GPIO-Pins
         self.pi.set_mode(self.RESETPIN, gpio.OUTPUT)
         self.pi.set_mode(self.DATAPIN, gpio.OUTPUT)
@@ -88,7 +86,7 @@ class SomfyRfm69Tx(object):
             rf.write_single(0x01, 0b00000100)     # OpMode: STDBY
 
             #rf.write_burst(0x07, [0x6C, 0x9A, 0x00]) # Frf: Carrier Frequency 434.42MHz
-            rf.write_burst(0x07, [0x6C, 0x4F, 0x5C]) # Frf: Carrier Frequency 433.42MHz/61.03515625 
+            rf.write_burst(0x07, [0x6C, 0x4F, 0x5C]) # Frf: Carrier Frequency 433.42MHz/61.03515625
 
             # Use PA_BOOST
             rf.write_single(0x13, 0x0F)
@@ -121,7 +119,7 @@ class SomfyRfm69Tx(object):
         sleep(.005)
 
     def send_wave_form(self, waveform):
-        
+
         self._start_transmit()
 
         # delete existing waveforms
@@ -140,10 +138,10 @@ class SomfyRfm69Tx(object):
 
         self._end_transmit()
 
-    
+
 
     def send_command(self, address, command, rolling_code):
-        
+
         wf = create_wave_form(self.DATAPIN, address, command, rolling_code, 3)
 
         self.send_wave_form(wf)
@@ -160,7 +158,7 @@ COMMANDS={
 def main(buttoncode):
     """ main function """
 
-    try:   
+    try:
         # load current config
         with open("config.json") as f:
 
