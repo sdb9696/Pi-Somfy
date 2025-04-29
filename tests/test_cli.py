@@ -35,20 +35,30 @@ def test_cli_services():
 def test_cli_press():
     runner = CliRunner()
 
-    with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
-        res = runner.invoke(
-            cli,
-            [
-                "TestShutter",
-                "--press",
-                "up",
-                "--press",
-                "down",
-                "--config",
-                "tests/config",
-            ],
-            catch_exceptions=False,
-        )
+    toml_path = Path("tests/config/operateShutters.toml")
+    json_path = Path("tests/config/operateShutters.json")
+    toml_config = toml_path.read_text()
+    json_config = json_path.read_text()
+
+    with runner.isolated_filesystem():
+        toml_path.parent.mkdir(parents=True)
+        toml_path.write_text(toml_config)
+        json_path.write_text(json_config)
+
+        with patch("pigpio.pi", return_value=Mock(connected=False)) as mock_pigpio:
+            res = runner.invoke(
+                cli,
+                [
+                    "TestShutter",
+                    "--press",
+                    "up",
+                    "--press",
+                    "down",
+                    "--config",
+                    "tests/config",
+                ],
+                catch_exceptions=False,
+            )
 
     web_server_msg = "Starting WebServer on Port 8080"
     mqtt_msg = "Entering MQTT polling loop"
