@@ -7,6 +7,7 @@ from tomlkit import dumps, parse, table, nl, document, comment
 from pathlib import Path
 from contextlib import contextmanager
 from collections import namedtuple
+from typing import Optional, Union
 
 try:
     from ConfigParser import RawConfigParser
@@ -220,7 +221,7 @@ class MyConfig:
     settings and JSON for shutters/scheduler settings.
     """
 
-    def __init__(self, filename: str = None, section: str = None):
+    def __init__(self, location=None):
         """Initialize configuration manager.
 
         Args:
@@ -228,7 +229,29 @@ class MyConfig:
             section: Initial section to work with
         """
         super().__init__()
-        self.filepath = Path(filename)
+
+        if isinstance(location, str):
+            location = Path(location)
+        elif isinstance(location, Path):
+            location = location
+        else:
+            location = Path("config")
+
+        if location.is_file():
+            filename_no_ext = location.stem
+            file_path = location.parent
+        else:
+            filename_no_ext = "operateShutters"
+            file_path = location
+
+        # File paths for new format
+        self.toml_path = Path(file_path / filename_no_ext).with_suffix(".toml")
+        self.json_path = Path(file_path / filename_no_ext).with_suffix(".json")
+        if location.is_file() and (suffix := location.suffix) and suffix == ".conf":
+            self.old_ini_path = location
+        else:
+            self.old_ini_path = Path(file_path / filename_no_ext).with_suffix(".conf")
+
         self.CriticalLock = threading.Lock()
         self.InitComplete = False
 
@@ -260,14 +283,6 @@ class MyConfig:
         self.shutters_by_name = {}
         self.schedule = {}
         self.password = ""
-
-        # File paths for new format
-        self.toml_path = Path(filename).with_suffix(".toml")
-        self.json_path = Path(filename).with_suffix(".json")
-        if (suffix := self.filepath.suffix) and suffix not in (".toml", ".json"):
-            self.old_ini_path = self.filepath
-        else:
-            self.old_ini_path = self.filepath.with_suffix(".conf")
 
         self.InitComplete = True
 
@@ -317,7 +332,7 @@ class MyConfig:
                     param2 = self.read_value(
                         config, "ShutterRollingCodes", key, return_type=int
                     )
-                    intermediate_pos = None
+                    intermediate_pos: Optional[Union[str, int]] = None
                     if config.has_option("ShutterIntermediatePositions", key):
                         intermediate_pos = self.read_value(
                             config, "ShutterIntermediatePositions", key, return_type=str

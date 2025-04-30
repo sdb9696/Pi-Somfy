@@ -5,9 +5,7 @@ from typing import Optional
 import logging
 import socket
 import logging.config
-import os
 import getpass
-from pathlib import Path
 from .operate_shutters import OperateShutters, Args
 from .config import MyConfig
 from logging.handlers import RotatingFileHandler
@@ -50,7 +48,7 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
     "-c",
     "--config",
     "config_location",
-    default=f"{os.getcwd()}/config/",
+    required=False,
     help="Config location. If folder name the filenames will be operateShutters.[toml/json]. If full name of a Config File the filenames will be fileName.[toml/json]",
     type=click.Path(exists=True),
 )
@@ -114,7 +112,7 @@ def setup_logger(log_file, level=logging.DEBUG, stream=False):
 )
 def cli(
     shutter_name: Optional[str],
-    config_location: str,
+    config_location: Optional[str],
     up: bool,
     down: bool,
     stop: bool,
@@ -134,13 +132,7 @@ def cli(
     This command-line tool allows control and automation of Somfy Shutters with various options
     for manual control, scheduling, and integration with external services like Alexa and MQTT.
     """
-    path = Path(config_location)
-    if path.is_file():
-        filename_no_ext = path.parent / path.stem
-    else:
-        filename_no_ext = Path(config_location) / "operateShutters"
-
-    config = MyConfig(filename=filename_no_ext)
+    config = MyConfig(config_location)
     result = config.load_config()
     if not result:
         click.error("Failure to load configuration parameters")
