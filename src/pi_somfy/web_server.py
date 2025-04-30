@@ -130,7 +130,6 @@ class FlaskAppWrapper(threading.Thread):
                 "addShutter",
                 "editShutter",
                 "deleteShutter",
-                "setLocation",
             ]:
                 LOGGER.info(
                     'processing Command "'
@@ -140,6 +139,18 @@ class FlaskAppWrapper(threading.Thread):
                 )
                 snake_command = camel_to_snake(command)
                 result = getattr(self, snake_command)(request.values)
+                return Response(json.dumps(result), status=200)
+            elif command in [
+                "setLocation",
+            ]:
+                LOGGER.info(
+                    'processing Command "'
+                    + command
+                    + '" with parameters: '
+                    + str(request.json)
+                )
+                snake_command = camel_to_snake(command)
+                result = getattr(self, snake_command)(request.json)
                 return Response(json.dumps(result), status=200)
             else:
                 LOGGER.warning("UNKNOWN COMMAND " + command)
@@ -230,16 +241,9 @@ class FlaskAppWrapper(threading.Thread):
         self.shutter.press_buttons(shutter, buttons, long_press)
         return {"status": "OK"}
 
-    def set_location(self, params):
-        LOGGER.debug(
-            "set Location: "
-            + params.get("lat", 0, type=str)
-            + " / "
-            + params.get("lng", 0, type=str)
-        )
-        self.config.set_location(
-            params.get("lat", 0, type=str), params.get("lng", 0, type=str)
-        )
+    def set_location(self, json_data):
+        LOGGER.debug(f"set Location: {json_data['lat']} / {json_data['lng']}")
+        self.config.set_location(json_data["lat"], json_data["lng"])
         self.schedule.set_update_time()
         return {"status": "OK"}
 

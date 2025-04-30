@@ -27,7 +27,7 @@ export const sendCommand = async (shutter: string, command: string) => {
 };
 
 export const setLocation = async (lat: number, lng: number) => {
-  const response = await api.postForm('setLocation', { lat, lng });
+  const response = await api.post('setLocation', { lat, lng });
   return response.data;
 };
 

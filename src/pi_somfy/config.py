@@ -567,7 +567,17 @@ class MyConfig:
         self.mqtt_client_id = mqtt_client_id
         self.enable_discovery = enable_discovery
 
-    def set_radio(self, tx_gpio: int, rts_address: str, send_repeat: int):
+    def set_radio(
+        self,
+        tx_gpio: int,
+        rts_address: str,
+        send_repeat: int,
+        rfm69_enabled: bool,
+        rfm69_reset_gpio: int,
+        rfm69_spi_channel: int,
+        pigpio_host: str,
+        pigpio_port: int,
+    ):
         """Set radio configuration and save to config.
 
         Args:
@@ -582,12 +592,22 @@ class MyConfig:
             toml["general"]["TXGPIO"] = tx_gpio
             toml["general"]["RTS_Address"] = rts_address
             toml["general"]["SendRepeat"] = send_repeat
+            toml["general"]["Rfm69Enabled"] = rfm69_enabled
+            toml["general"]["Rfm69ResetGPIO"] = rfm69_reset_gpio
+            toml["general"]["Rfm69SPIChannel"] = rfm69_spi_channel
+            toml["general"]["PIGPIOHost"] = pigpio_host
+            toml["general"]["PIGPIOPort"] = pigpio_port
             toml_dump = dumps(toml)
             with open(self.toml_path, "w") as f:
                 f.write(toml_dump)
         self.tx_gpio = tx_gpio
         self.rts_address = rts_address
         self.send_repeat = send_repeat
+        self.rfm69_enabled = rfm69_enabled
+        self.rfm69_reset_gpio = rfm69_reset_gpio
+        self.rfm69_spi_channel = rfm69_spi_channel
+        self.pigpio_host = pigpio_host
+        self.pigpio_port = pigpio_port
 
     def set_shutter_code(self, shutter_id: str, code: int):
         """Set rolling code for a shutter and save to config.
