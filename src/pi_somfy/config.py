@@ -8,11 +8,7 @@ from pathlib import Path
 from contextlib import contextmanager
 from collections import namedtuple
 from typing import Optional, Union
-
-try:
-    from ConfigParser import RawConfigParser
-except ImportError:
-    from configparser import RawConfigParser
+from configparser import RawConfigParser
 
 LOGGER = logging.getLogger(__name__)
 
@@ -455,7 +451,6 @@ class MyConfig:
             toml_string = f.read()
         toml = parse(toml_string)
 
-        param: ConfigParam
         for param in CONFIG_PARAMETERS:
             try:
                 if val := toml[param.section].get(param.name):
@@ -543,7 +538,7 @@ class MyConfig:
         with self.json_config() as json_dict:
             json_dict["shutters"][shutter_id] = shutter
 
-        self.shutters_by_name.pop("original_name", None)
+        self.shutters_by_name.pop(original_name, None)
         self.shutters_by_name[name] = shutter
 
     def add_shutter(self, name: str, duration: str):
