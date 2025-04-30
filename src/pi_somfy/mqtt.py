@@ -132,7 +132,7 @@ class MQTT(threading.Thread):
             ):
                 LOGGER.info("Subscribe to shutter: " + shutter)
                 self.t.subscribe("somfy/" + shutter_id + "/level/cmd")
-            if self.config.EnableDiscovery == True:
+            if self.config.enable_discovery == True:
                 LOGGER.info("Sending Home Assistant MQTT Discovery messages")
                 self.send_startup_info()
         else:
@@ -146,7 +146,7 @@ class MQTT(threading.Thread):
             # while not self.connected_flag: #wait in loop
             #    LOGGER.info("Waiting 30sec for reconnect")
             #    time.sleep(30)
-            #    self.t.connect(self.config.MQTT_Server,self.config.MQTT_Port)
+            #    self.t.connect(self.config.mqtt_server,self.config.mqtt_port)
 
     def set_state(self, shutter_id, level):
         LOGGER.info(
@@ -159,10 +159,10 @@ class MQTT(threading.Thread):
         LOGGER.info("Entering MQTT polling loop")
 
         # Setup the mqtt client
-        self.t = paho.Client(client_id=self.config.MQTT_ClientID)
-        if not (self.config.MQTT_Password.strip() == ""):
+        self.t = paho.Client(client_id=self.config.mqtt_client_id)
+        if not (self.config.mqtt_password.strip() == ""):
             self.t.username_pw_set(
-                username=self.config.MQTT_User, password=self.config.MQTT_Password
+                username=self.config.mqtt_user, password=self.config.mqtt_password
             )
         self.t.on_connect = self.on_connect
         self.t.on_message = self.receive_message_from_mqtt
@@ -176,7 +176,7 @@ class MQTT(threading.Thread):
             # Loop until the server is available
             try:
                 LOGGER.info("Connecting to MQTT server")
-                self.t.connect(self.config.MQTT_Server, self.config.MQTT_Port)
+                self.t.connect(self.config.mqtt_server, self.config.mqtt_port)
                 time.sleep(10)
                 break
             except Exception as e:
@@ -206,7 +206,7 @@ class MQTT(threading.Thread):
                 # self.t.loop_start()
                 if self.connected_flag == False:
                     LOGGER.info("Re-Connecting to MQTT server")
-                    self.t.connect(self.config.MQTT_Server, self.config.MQTT_Port)
+                    self.t.connect(self.config.mqtt_server, self.config.mqtt_port)
                     time.sleep(10)
             except Exception as e:
                 error += 1

@@ -93,10 +93,10 @@ class Shutter:
         if config != None:
             self.config = config
 
-        if self.config.TXGPIO != None:
-            self.TXGPIO = self.config.TXGPIO  # 433.42 MHz emitter
+        if self.config.tx_gpio != None:
+            self.tx_gpio = self.config.tx_gpio  # 433.42 MHz emitter
         else:
-            self.TXGPIO = 4  # 433.42 MHz emitter on GPIO 4
+            self.tx_gpio = 4  # 433.42 MHz emitter on GPIO 4
 
         self.callback = []
         self.shutter_state_list = {}
@@ -155,7 +155,7 @@ class Shutter:
         state = self.get_shutter_state(shutter_id, 100)
 
         LOGGER.info("[" + self.config.shutters[shutter_id]["name"] + "] Going down")
-        self.send_command(shutter_id, self.BUTTON_DOWN, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_DOWN, self.config.send_repeat)
         state.register_command("down")
 
         # wait and set final position only if not interrupted in between
@@ -171,7 +171,7 @@ class Shutter:
         state = self.get_shutter_state(shutter_id, 100)
 
         LOGGER.info("[" + self.config.shutters[shutter_id]["name"] + "] Going down")
-        self.send_command(shutter_id, self.BUTTON_DOWN, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_DOWN, self.config.send_repeat)
         state.register_command("down")
         time.sleep(
             (state.position - percentage)
@@ -183,7 +183,7 @@ class Shutter:
             + self.config.shutters[shutter_id]["name"]
             + "] Stop at partial position requested"
         )
-        self.send_command(shutter_id, self.BUTTON_STOP, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_STOP, self.config.send_repeat)
 
         self.set_position(shutter_id, percentage)
 
@@ -191,7 +191,7 @@ class Shutter:
         state = self.get_shutter_state(shutter_id, 0)
 
         LOGGER.info("[" + self.config.shutters[shutter_id]["name"] + "] Going up")
-        self.send_command(shutter_id, self.BUTTON_UP, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_UP, self.config.send_repeat)
         state.register_command("up")
 
         # wait and set final position only if not interrupted in between
@@ -210,7 +210,7 @@ class Shutter:
         state = self.get_shutter_state(shutter_id, 0)
 
         LOGGER.info("[" + self.config.shutters[shutter_id]["name"] + "] Going up")
-        self.send_command(shutter_id, self.BUTTON_UP, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_UP, self.config.send_repeat)
         state.register_command("up")
         time.sleep(
             (percentage - state.position)
@@ -222,7 +222,7 @@ class Shutter:
             + self.config.shutters[shutter_id]["name"]
             + "] Stop at partial position requested"
         )
-        self.send_command(shutter_id, self.BUTTON_STOP, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_STOP, self.config.send_repeat)
 
         self.set_position(shutter_id, percentage)
 
@@ -230,7 +230,7 @@ class Shutter:
         state = self.get_shutter_state(shutter_id, 50)
 
         LOGGER.info("[" + self.config.shutters[shutter_id]["name"] + "] Stopping")
-        self.send_command(shutter_id, self.BUTTON_STOP, self.config.SendRepeat)
+        self.send_command(shutter_id, self.BUTTON_STOP, self.config.send_repeat)
 
         LOGGER.debug("[" + shutter_id + "] Previous position: " + str(state.position))
         seconds_since_last_command = int(
@@ -381,14 +381,14 @@ class Shutter:
             LOGGER.info(f"Rolling code : {code}")
             LOGGER.info("")
 
-            wf = create_wave_form(self.TXGPIO, teleco, button, code, repetition)
+            wf = create_wave_form(self.tx_gpio, teleco, button, code, repetition)
 
-            if not (self.config.Rfm69Enabled):
+            if not (self.config.rfm69_enabled):
                 start_time = time.time()
                 LOGGER.debug("Connecting to PIGPIO")
                 pi = create_pigpio_connection(
-                    self.config.PIGPIOHost,
-                    self.config.PIGPIOPort,
+                    self.config.pigpio_host,
+                    self.config.pigpio_port,
                     timeout=self.config.PIGPIO_Connect_Timeout,
                 )
                 end_time = time.time()
@@ -400,7 +400,7 @@ class Shutter:
                     sys.exit(1)
 
                 pi.wave_add_new()
-                pi.set_mode(self.TXGPIO, pigpio.OUTPUT)
+                pi.set_mode(self.tx_gpio, pigpio.OUTPUT)
 
                 pi.wave_add_generic(wf)
                 wid = pi.wave_create()
@@ -415,11 +415,11 @@ class Shutter:
                 pi.stop()
             else:
                 with SomfyRfm69Tx(
-                    self.config.Rfm69ResetGPIO,
-                    self.TXGPIO,
-                    spichannel=self.config.Rfm69SPIChannel,
-                    pigpiohost=self.config.PIGPIOHost,
-                    pigpioport=self.config.PIGPIOPort,
+                    self.config.rfm69_reset_gpio,
+                    self.tx_gpio,
+                    spichannel=self.config.rfm69_spi_channel,
+                    pigpiohost=self.config.pigpio_host,
+                    pigpioport=self.config.pigpio_port,
                     pigpio_connect_timeout=self.config.PIGPIO_Connect_Timeout,
                 ) as somfy_rfm69_tx:
                     somfy_rfm69_tx.send_wave_form(wf)
@@ -439,7 +439,7 @@ class OperateShutters:
         self.is_stopping = False
         self.program_complete = False
 
-        if os.geteuid() != 0 and self.config.HTTPPort < 1024:
+        if os.geteuid() != 0 and self.config.http_port < 1024:
             LOGGER.info(
                 "You are not running as sudo, you will need to ensure you have appropriate permissions for your config (i.e. ports less than 1024) or run this script as sudo"
             )
@@ -493,8 +493,8 @@ class OperateShutters:
         connected = False
         try:
             pi = create_pigpio_connection(
-                self.config.PIGPIOHost,
-                self.config.PIGPIOPort,
+                self.config.pigpio_host,
+                self.config.pigpio_port,
                 timeout=self.config.PIGPIO_Connect_Timeout,
             )
             connected = pi.connected
@@ -503,29 +503,29 @@ class OperateShutters:
         except TimeoutError:
             LOGGER.error(
                 "Could not connect to pigpiod on %s:%s",
-                self.config.PIGPIOHost,
-                self.config.PIGPIOPort,
+                self.config.pigpio_host,
+                self.config.pigpio_port,
             )
         except Exception:
             LOGGER.exception(
                 "Could not connect to pigpiod on %s:%s",
-                self.config.PIGPIOHost,
-                self.config.PIGPIOPort,
+                self.config.pigpio_host,
+                self.config.pigpio_port,
             )
 
         if connected:
             LOGGER.info(
                 "Successfully connected to pigpiod on %s:%s",
-                self.config.PIGPIOHost,
-                self.config.PIGPIOPort,
+                self.config.pigpio_host,
+                self.config.pigpio_port,
             )
             return
 
-        if self.config.PIGPIOHost != "localhost":
+        if self.config.pigpio_host != "localhost":
             LOGGER.warning(
                 "Cannot connect to pigpiod on %s:%s, pigpiod is not running on localhost, skipping local start",
-                self.config.PIGPIOHost,
-                self.config.PIGPIOPort,
+                self.config.pigpio_host,
+                self.config.pigpio_port,
             )
             return
 
@@ -551,8 +551,8 @@ class OperateShutters:
 
             try:
                 pi = create_pigpio_connection(
-                    self.config.PIGPIOHost,
-                    self.config.PIGPIOPort,
+                    self.config.pigpio_host,
+                    self.config.pigpio_port,
                     timeout=self.config.PIGPIO_Connect_Timeout,
                 )
                 if not pi.connected:

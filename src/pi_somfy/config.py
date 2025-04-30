@@ -6,6 +6,7 @@ import logging
 from tomlkit import dumps, parse, table, nl, document, comment
 from pathlib import Path
 from contextlib import contextmanager
+from collections import namedtuple
 
 try:
     from ConfigParser import RawConfigParser
@@ -14,119 +15,202 @@ except ImportError:
 
 LOGGER = logging.getLogger(__name__)
 
-GENERAL_PARAMETERS = {
-    "LogLocation": str,
-    "LogToConsole": bool,
-    "Latitude": float,
-    "Longitude": float,
-    "SendRepeat": int,
-    "TXGPIO": int,
-    "Rfm69ResetGPIO": int,
-    "Rfm69SPIChannel": int,
-    "Rfm69Enabled": bool,
-    "PIGPIOHost": str,
-    "PIGPIOPort": int,
-    "UseHttps": bool,
-    "HTTPPort": int,
-    "HTTPSPort": int,
-    "RTS_Address": str,
-    "Password": str,
-}
-MQQT_PARAMETERS = {
-    "MQTT_Server": str,
-    "MQTT_Port": int,
-    "MQTT_User": str,
-    "MQTT_Password": str,
-    "MQTT_ClientID": str,
-    "EnableDiscovery": bool,
-}
+ConfigParam = namedtuple(
+    "ConfigParam", ["name", "type", "section", "doc", "variable_name"]
+)
 
-CONFIG_COMMENTS = {
-    "LogLocation": ["location of log files (required)"],
-    "Latitude": [
-        "PUT YOUR OWN COORDINATES HERE",
-        "Latitude of the place for computation of sunset and sunrise.",
-        "check on Google Maps for instance",
-    ],
-    "Longitude": [
-        "PUT YOUR OWN COORDINATES HERE",
-        "Longitude of the place for computation of sunset and sunrise.",
-        "check on Google Maps for instance",
-    ],
-    "SendRepeat": [
-        "Repeat each command a certain number of times. This is to ensure it works",
-        "if the remote is far away from the shutter and sometime EMI prevents a",
-        "signal to go through",
-        "This option only applies if a shutter is raised or lowered in full. If",
-        "a shutter is only raised or lowered for a given amount of seconds, this",
-        "option does not apply for obvious reasons.",
-    ],
-    "TXGPIO": [
-        "(Optional) This parameter specifes the GPIO connector where the 433.42 MHz",
-        "emitter is connected to. The default value is 4",
-    ],
-    "Rfm69ResetGPIO": [
-        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
-        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
-        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
-    ],
-    "Rfm69SPIChannel": [
-        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
-        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
-        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
-    ],
-    "Rfm69Enabled": [
-        "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
-        "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
-        "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
-    ],
-    "PIGPIOHost": [
-        "(Optional) These parameters configure remote GPIO access via PIOPIO"
-    ],
-    "PIGPIOPort": [
-        "(Optional) These parameters configure remote GPIO access via PIOPIO"
-    ],
-    "UseHttps": [
-        "This parameter, if true will enable the use of HTTPS",
-        "(secure HTTP) in the Flask web app or user name and password",
-        "authentication, depending on the options below. This option is only",
-        "applicable to the web app. This option requires python-openssl library",
-        "to be installed",
-    ],
-    "HTTPPort": [
-        "(Optional) This parameter will allow the HTTP port to be set by the web",
-        "interface. The default is 80, but this setting will override that",
-        "value. This option is only applicable to the web app.",
-    ],
-    "HTTPSPort": [
-        "This parameter will override the default port for HTTPS, which is",
-        "443. Uncomment and change this value to use a non-standard port for HTTPS",
-    ],
-    "RTS_Address": [
-        "Lowest identifier used by the tool to assign unique 24bit",
-        "ids for new remote. This value won't change in the config file, instead",
-        "the tool will look for the next available address that has not been",
-        "used yet.",
-        "If you are running more than one instance of PiSomfy you must ensure",
-        "each instance is set to a different value to avoid possible conflicts",
-    ],
-    "MQTT_Server": ["Location (IP Address of DNS Name) of the MQTT Server"],
-    "MQTT_Port": ["Port of the MQTT Server"],
-    "MQTT_User": ["Username for the MQTT Server"],
-    "MQTT_Password": ["Password of the MQTT Server"],
-    "MQTT_ClientID": [
-        "MQTT unique client identifier",
-        "If you are running more than one instance of PiSomfy you must ensure",
-        "each instance is set to a different value to avoid possible conflicts",
-    ],
-    "EnableDiscovery": [
-        "If MQTT Discovery is enabled, simply add the folowing 2 lines to Home",
-        "Assistant's configuration.yaml file:",
-        "#",
-        "mqtt:",
-        "  discovery: true",
-    ],
-}
+CONFIG_PARAMETERS = [
+    # General parameters
+    ConfigParam(
+        "LogLocation",
+        str,
+        "general",
+        ["location of log files (required)"],
+        "log_location",
+    ),
+    ConfigParam("LogToConsole", bool, "general", [], "log_to_console"),
+    ConfigParam(
+        "Latitude",
+        float,
+        "general",
+        [
+            "PUT YOUR OWN COORDINATES HERE",
+            "Latitude of the place for computation of sunset and sunrise.",
+            "check on Google Maps for instance",
+        ],
+        "latitude",
+    ),
+    ConfigParam(
+        "Longitude",
+        float,
+        "general",
+        [
+            "PUT YOUR OWN COORDINATES HERE",
+            "Longitude of the place for computation of sunset and sunrise.",
+            "check on Google Maps for instance",
+        ],
+        "longitude",
+    ),
+    ConfigParam(
+        "SendRepeat",
+        int,
+        "general",
+        [
+            "Repeat each command a certain number of times. This is to ensure it works",
+            "if the remote is far away from the shutter and sometime EMI prevents a",
+            "signal to go through",
+            "This option only applies if a shutter is raised or lowered in full. If",
+            "a shutter is only raised or lowered for a given amount of seconds, this",
+            "option does not apply for obvious reasons.",
+        ],
+        "send_repeat",
+    ),
+    ConfigParam(
+        "TXGPIO",
+        int,
+        "general",
+        [
+            "(Optional) This parameter specifes the GPIO connector where the 433.42 MHz",
+            "emitter is connected to. The default value is 4",
+        ],
+        "tx_gpio",
+    ),
+    ConfigParam(
+        "Rfm69ResetGPIO",
+        int,
+        "general",
+        [
+            "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+            "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+            "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
+        ],
+        "rfm69_reset_gpio",
+    ),
+    ConfigParam(
+        "Rfm69SPIChannel",
+        int,
+        "general",
+        [
+            "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+            "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+            "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
+        ],
+        "rfm69_spi_channel",
+    ),
+    ConfigParam(
+        "Rfm69Enabled",
+        bool,
+        "general",
+        [
+            "(Optional) These parameters configure the GPIO connectors for an RFM69HCW to",
+            "to use where the 433.42 MHz frequency.  If using Rfm69 ensure to update the TXGPIO",
+            "value above to match the DATA/DIO2 Pin for the Rfm69 module and set Rfm69Enabled to True",
+        ],
+        "rfm69_enabled",
+    ),
+    ConfigParam(
+        "PIGPIOHost",
+        str,
+        "general",
+        ["(Optional) These parameters configure remote GPIO access via PIOPIO"],
+        "pigpio_host",
+    ),
+    ConfigParam(
+        "PIGPIOPort",
+        int,
+        "general",
+        ["(Optional) These parameters configure remote GPIO access via PIOPIO"],
+        "pigpio_port",
+    ),
+    ConfigParam(
+        "UseHttps",
+        bool,
+        "general",
+        [
+            "This parameter, if true will enable the use of HTTPS",
+            "(secure HTTP) in the Flask web app or user name and password",
+            "authentication, depending on the options below. This option is only",
+            "applicable to the web app. This option requires python-openssl library",
+            "to be installed",
+        ],
+        "use_https",
+    ),
+    ConfigParam(
+        "HTTPPort",
+        int,
+        "general",
+        [
+            "(Optional) This parameter will allow the HTTP port to be set by the web",
+            "interface. The default is 80, but this setting will override that",
+            "value. This option is only applicable to the web app.",
+        ],
+        "http_port",
+    ),
+    ConfigParam(
+        "HTTPSPort",
+        int,
+        "general",
+        [
+            "This parameter will override the default port for HTTPS, which is",
+            "443. Uncomment and change this value to use a non-standard port for HTTPS",
+        ],
+        "https_port",
+    ),
+    ConfigParam(
+        "RTS_Address",
+        str,
+        "general",
+        [
+            "Lowest identifier used by the tool to assign unique 24bit",
+            "ids for new remote. This value won't change in the config file, instead",
+            "the tool will look for the next available address that has not been",
+            "used yet.",
+            "If you are running more than one instance of PiSomfy you must ensure",
+            "each instance is set to a different value to avoid possible conflicts",
+        ],
+        "rts_address",
+    ),
+    ConfigParam("Password", str, "general", [], "password"),
+    # MQTT parameters
+    ConfigParam(
+        "MQTT_Server",
+        str,
+        "mqtt",
+        ["Location (IP Address of DNS Name) of the MQTT Server"],
+        "mqtt_server",
+    ),
+    ConfigParam("MQTT_Port", int, "mqtt", ["Port of the MQTT Server"], "mqtt_port"),
+    ConfigParam(
+        "MQTT_User", str, "mqtt", ["Username for the MQTT Server"], "mqtt_user"
+    ),
+    ConfigParam(
+        "MQTT_Password", str, "mqtt", ["Password of the MQTT Server"], "mqtt_password"
+    ),
+    ConfigParam(
+        "MQTT_ClientID",
+        str,
+        "mqtt",
+        [
+            "MQTT unique client identifier",
+            "If you are running more than one instance of PiSomfy you must ensure",
+            "each instance is set to a different value to avoid possible conflicts",
+        ],
+        "mqtt_client_id",
+    ),
+    ConfigParam(
+        "EnableDiscovery",
+        bool,
+        "mqtt",
+        [
+            "If MQTT Discovery is enabled, simply add the folowing 2 lines to Home",
+            "Assistant's configuration.yaml file:",
+            "#",
+            "mqtt:",
+            "  discovery: true",
+        ],
+        "enable_discovery",
+    ),
+]
 
 
 class MyConfig:
@@ -149,33 +233,33 @@ class MyConfig:
         self.InitComplete = False
 
         # Default values
-        self.Rfm69ResetGPIO = 25
-        self.Rfm69SPIChannel = 0
-        self.Rfm69Enabled = False
-        self.PIGPIOHost = "localhost"
-        self.PIGPIOPort = 8888
+        self.rfm69_reset_gpio = 25
+        self.rfm69_spi_channel = 0
+        self.rfm69_enabled = False
+        self.pigpio_host = "localhost"
+        self.pigpio_port = 8888
         self.PIGPIO_Connect_Timeout = 5
-        self.LogLocation = "."
-        self.LogToConsole = True
+        self.log_location = "."
+        self.log_to_console = True
         self.LogLevel = logging.DEBUG
-        self.Latitude = 51.4769
-        self.Longitude = 0
-        self.SendRepeat = 2
-        self.UseHttps = False
-        self.HTTPPort = 8080
-        self.HTTPSPort = 443
-        self.TXGPIO = 4
-        self.RTS_Address = "0x279620"
-        self.MQTT_ClientID = "somfy-mqtt-bridge"
-        self.MQTT_Password = "xxxxxxxx"
-        self.MQTT_Server = "192.168.1.x"
-        self.MQTT_Port = 1883
-        self.MQTT_User = "xxxxxxx"
-        self.EnableDiscovery = True
+        self.latitude = 51.4769
+        self.longitude = 0
+        self.send_repeat = 2
+        self.use_https = False
+        self.http_port = 8080
+        self.https_port = 443
+        self.tx_gpio = 4
+        self.rts_address = "0x279620"
+        self.mqtt_client_id = "somfy-mqtt-bridge"
+        self.mqtt_password = "xxxxxxxx"
+        self.mqtt_server = "192.168.1.x"
+        self.mqtt_port = 1883
+        self.mqtt_user = "xxxxxxx"
+        self.enable_discovery = True
         self.shutters = {}
         self.shutters_by_name = {}
         self.schedule = {}
-        self.Password = ""
+        self.password = ""
 
         # File paths for new format
         self.toml_path = Path(filename).with_suffix(".toml")
@@ -197,18 +281,22 @@ class MyConfig:
         config = RawConfigParser()
         config.read(legacy_config_filename)
 
-        for section, params in [
-            ("General", GENERAL_PARAMETERS),
-            ("MQTT", MQQT_PARAMETERS),
-        ]:
-            for key, type in params.items():
+        for ini_section in ["General", "MQTT"]:
+            params = [
+                param
+                for param in CONFIG_PARAMETERS
+                if param.section == ini_section.lower()
+            ]
+            for param in params:
                 try:
-                    if config.has_option(section, key):
-                        val = self.read_value(config, section, key, return_type=type)
-                        setattr(self, key, val)
+                    if config.has_option(ini_section, param.name):
+                        val = self.read_value(
+                            config, ini_section, param.name, return_type=param.type
+                        )
+                        setattr(self, param.variable_name, val)
                 except Exception as e1:
                     LOGGER.exception(
-                        f"Missing config file or config file entries in Section {section} for key {key}: {e1}"
+                        f"Missing config file or config file entries in Section {ini_section} for key {param.name}: {e1}"
                     )
                     return False
 
@@ -326,19 +414,22 @@ class MyConfig:
         doc.add(comment("Pi-Somfy Configuration File."))
         doc.add(nl())
 
-        for tablename, params in [
-            ("general", GENERAL_PARAMETERS),
-            ("mqtt", MQQT_PARAMETERS),
-        ]:
+        section_params = {}
+        for param in CONFIG_PARAMETERS:
+            if param.section not in section_params:
+                section_params[param.section] = []
+            section_params[param.section].append(param)
+
+        for section_name, params in section_params.items():
             ttable = table()
-            for key, type_ in params.items():
-                if comments := CONFIG_COMMENTS.get(key):
+            for param in params:
+                if param.doc:
                     ttable.add(nl())
-                    for cmt in comments:
+                    for cmt in param.doc:
                         ttable.add(comment(cmt))
-                val = type_(getattr(self, key))
-                ttable.add(key, val)
-            doc.add(tablename, ttable)
+                val = param.type(getattr(self, param.variable_name))
+                ttable.add(param.name, val)
+            doc.add(section_name, ttable)
             doc.add(nl())
         return doc
 
@@ -349,19 +440,16 @@ class MyConfig:
             toml_string = f.read()
         toml = parse(toml_string)
 
-        for section, params in [
-            ("general", GENERAL_PARAMETERS),
-            ("mqtt", MQQT_PARAMETERS),
-        ]:
-            for key in params:
-                try:
-                    if val := toml[section].get(key):
-                        setattr(self, key, val)
-                except Exception as e1:
-                    LOGGER.exception(
-                        f"Missing config file or config file entries in Section {section} for key {key}: {e1}"
-                    )
-                    return False
+        param: ConfigParam
+        for param in CONFIG_PARAMETERS:
+            try:
+                if val := toml[param.section].get(param.name):
+                    setattr(self, param.variable_name, val)
+            except Exception as e1:
+                LOGGER.exception(
+                    f"Missing config file or config file entries in Section {param.section} for key {param.name}: {e1}"
+                )
+                return False
 
         # Load Shutters from JSON
         if self.json_path.exists():
@@ -404,8 +492,8 @@ class MyConfig:
             toml_dump = dumps(toml)
             with open(self.toml_path, "w") as f:
                 f.write(toml_dump)
-        self.Latitude = lat
-        self.Longitude = lng
+        self.latitude = lat
+        self.longitude = lng
 
     def set_shutter_code(self, shutter_id: str, code: int):
         """Set rolling code for a shutter and save to config.
@@ -451,7 +539,7 @@ class MyConfig:
             name: Shutter name
             duration: Shutter duration
         """
-        tmp_id = int(self.RTS_Address, 16)
+        tmp_id = int(self.rts_address, 16)
         conflict = True
         while conflict == True:
             tmp_id = tmp_id + 1

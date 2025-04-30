@@ -145,8 +145,8 @@ def cli(
     if not result:
         click.error("Failure to load configuration parameters")
 
-    log_file = config.LogLocation + "operateShutters-" + getpass.getuser() + ".log"
-    setup_logger(log_file, logging.DEBUG, config.LogToConsole)
+    log_file = config.log_location + "operateShutters-" + getpass.getuser() + ".log"
+    setup_logger(log_file, logging.DEBUG, config.log_to_console)
 
     args = Args(
         shutter_name=shutter_name,

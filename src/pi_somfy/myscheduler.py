@@ -401,8 +401,8 @@ class Scheduler(threading.Thread):
     def update_schedule(self):
         week_days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-        self.home_location.lat = str(self.config.Latitude)
-        self.home_location.lon = str(self.config.Longitude)
+        self.home_location.lat = str(self.config.latitude)
+        self.home_location.lon = str(self.config.longitude)
         self.home_location.date = datetime.datetime.now().strftime("%Y/%m/%d 00:00:00")
         sunrise = ephem.localtime(self.home_location.next_rising(ephem.Sun()))
         sunset = ephem.localtime(self.home_location.next_setting(ephem.Sun()))
@@ -501,7 +501,7 @@ class Scheduler(threading.Thread):
                                                 + '" was canceled! Shutter was already at same or above requested position'
                                             )
                                     else:
-                                        for i in range(self.config.SendRepeat):
+                                        for i in range(self.config.send_repeat):
                                             self.shutter.rise(shutter_id)
                                             time.sleep(5)
                                 elif event_detail[1].startswith("down"):
@@ -521,7 +521,7 @@ class Scheduler(threading.Thread):
                                                 + '" was canceled! Shutter was already at same or below requested position'
                                             )
                                     else:
-                                        for i in range(self.config.SendRepeat):
+                                        for i in range(self.config.send_repeat):
                                             self.shutter.lower(shutter_id)
                                             time.sleep(5)
                                 elif event_detail[1].startswith("stop"):

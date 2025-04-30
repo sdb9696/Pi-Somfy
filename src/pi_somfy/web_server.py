@@ -152,7 +152,7 @@ class FlaskAppWrapper(threading.Thread):
 
     def validate_password(self, header=True):
         # If no password configured, it's OK
-        if self.config.Password == "":
+        if self.config.password == "":
             return True
 
         if header:
@@ -162,7 +162,7 @@ class FlaskAppWrapper(threading.Thread):
             # Support password from 'Password' url param
             password = request.args.get("Password")
 
-        if password != self.config.Password:
+        if password != self.config.password:
             LOGGER.debug("received invalid password")
             LOGGER.debug(password)
             return False
@@ -417,8 +417,8 @@ class FlaskAppWrapper(threading.Thread):
             shutters[k] = self.config.shutters[k]["name"]
             durations[k] = self.config.shutters[k]["durationDown"]
         obj = {
-            "Latitude": self.config.Latitude,
-            "Longitude": self.config.Longitude,
+            "Latitude": self.config.latitude,
+            "Longitude": self.config.longitude,
             "Shutters": shutters,
             "ShutterDurations": durations,
             "Schedule": self.schedule.get_schedule_as_dict(),
@@ -467,24 +467,24 @@ class FlaskAppWrapper(threading.Thread):
         return ctx
 
     def run(self):
-        if self.config.UseHttps:
+        if self.config.use_https:
             LOGGER.info(
-                "Starting secure WebServer on Port " + str(self.config.HTTPSPort)
+                "Starting secure WebServer on Port " + str(self.config.https_port)
             )
             self.app.run(
                 host="0.0.0.0",
-                port=self.config.HTTPSPort,
+                port=self.config.https_port,
                 threaded=True,
                 ssl_context=self.generate_adhoc_ssl_context(),
                 use_reloader=False,
                 debug=False,
             )
         else:
-            LOGGER.info("Starting WebServer on Port " + str(self.config.HTTPPort))
+            LOGGER.info("Starting WebServer on Port " + str(self.config.http_port))
             self.app.run(
                 host="0.0.0.0",
                 threaded=True,
-                port=self.config.HTTPPort,
+                port=self.config.http_port,
                 use_reloader=False,
                 debug=False,
             )
