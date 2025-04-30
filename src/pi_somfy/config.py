@@ -505,6 +505,90 @@ class MyConfig:
         self.latitude = lat
         self.longitude = lng
 
+    def set_web(self, http_port: int, https_port: int, use_https: bool, password: str):
+        """Set web server configuration and save to config.
+
+        Args:
+            http_port: HTTP port number
+            https_port: HTTPS port number
+            use_https: Whether to use HTTPS
+        """
+        with self.CriticalLock:
+            with open(self.toml_path, "r") as f:
+                toml_string = f.read()
+            toml = parse(toml_string)
+            toml["general"]["HTTPPort"] = http_port
+            toml["general"]["HTTPSPort"] = https_port
+            toml["general"]["UseHttps"] = use_https
+            toml["general"]["Password"] = password
+            toml_dump = dumps(toml)
+            with open(self.toml_path, "w") as f:
+                f.write(toml_dump)
+        self.http_port = http_port
+        self.https_port = https_port
+        self.use_https = use_https
+        self.password = password
+
+    def set_mq(
+        self,
+        mqtt_server: str,
+        mqtt_port: int,
+        mqtt_user: str,
+        mqtt_password: str,
+        mqtt_client_id: str,
+        enable_discovery: bool,
+    ):
+        """Set MQTT configuration and save to config.
+
+        Args:
+            server: MQTT server address
+            port: MQTT port number
+            user: MQTT username
+            password: MQTT password
+            client_id: MQTT client identifier
+        """
+        with self.CriticalLock:
+            with open(self.toml_path, "r") as f:
+                toml_string = f.read()
+            toml = parse(toml_string)
+            toml["mqtt"]["MQTT_Server"] = mqtt_server
+            toml["mqtt"]["MQTT_Port"] = mqtt_port
+            toml["mqtt"]["MQTT_User"] = mqtt_user
+            toml["mqtt"]["MQTT_Password"] = mqtt_password
+            toml["mqtt"]["MQTT_ClientID"] = mqtt_client_id
+            toml["mqtt"]["EnableDiscovery"] = enable_discovery
+            toml_dump = dumps(toml)
+            with open(self.toml_path, "w") as f:
+                f.write(toml_dump)
+        self.mqtt_server = mqtt_server
+        self.mqtt_port = mqtt_port
+        self.mqtt_user = mqtt_user
+        self.mqtt_password = mqtt_password
+        self.mqtt_client_id = mqtt_client_id
+        self.enable_discovery = enable_discovery
+
+    def set_radio(self, tx_gpio: int, rts_address: str, send_repeat: int):
+        """Set radio configuration and save to config.
+
+        Args:
+            tx_gpio: GPIO pin for transmission
+            rts_address: RTS address in hex format
+            send_repeat: Number of times to repeat transmission
+        """
+        with self.CriticalLock:
+            with open(self.toml_path, "r") as f:
+                toml_string = f.read()
+            toml = parse(toml_string)
+            toml["general"]["TXGPIO"] = tx_gpio
+            toml["general"]["RTS_Address"] = rts_address
+            toml["general"]["SendRepeat"] = send_repeat
+            toml_dump = dumps(toml)
+            with open(self.toml_path, "w") as f:
+                f.write(toml_dump)
+        self.tx_gpio = tx_gpio
+        self.rts_address = rts_address
+        self.send_repeat = send_repeat
+
     def set_shutter_code(self, shutter_id: str, code: int):
         """Set rolling code for a shutter and save to config.
 
