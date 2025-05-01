@@ -142,6 +142,9 @@ class FlaskAppWrapper(threading.Thread):
                 return Response(json.dumps(result), status=200)
             elif command in [
                 "setLocation",
+                "setWebSettings",
+                "setMqttSettings",
+                "setRadioSettings",
             ]:
                 LOGGER.info(
                     'processing Command "'
@@ -245,6 +248,77 @@ class FlaskAppWrapper(threading.Thread):
         LOGGER.debug(f"set Location: {json_data['lat']} / {json_data['lng']}")
         self.config.set_location(json_data["lat"], json_data["lng"])
         self.schedule.set_update_time()
+        return {"status": "OK"}
+
+    def set_web_settings(self, json_data):
+        if not self.validate_password():
+            return {"status": "ERROR", "message": "Invalid password"}
+
+        http_port = json_data["httpPort"]
+        https_port = json_data["httpsPort"]
+        use_https = json_data["useHttps"]
+        password = json_data["password"]
+
+        LOGGER.debug(
+            f"Setting web settings: HTTP Port={http_port}, HTTPS Port={https_port}, Use HTTPS={use_https}, Password=*****"
+        )
+        self.config.set_web(http_port, https_port, use_https, password)
+        return {"status": "OK"}
+
+    def set_mqtt_settings(self, json_data):
+        if not self.validate_password():
+            return {"status": "ERROR", "message": "Invalid password"}
+
+        server = json_data["server"]
+        port = json_data["port"]
+        user = json_data["user"]
+        password = json_data["password"]
+        client_id = json_data["clientId"]
+        enable_discovery = json_data["enableDiscovery"]
+
+        LOGGER.debug(
+            f"Setting MQTT settings: Server={server}, Port={port}, User={user}, Password=*****, Client ID={client_id}, Enable Discovery={enable_discovery}"
+        )
+        self.config.set_mq(server, port, user, password, client_id, enable_discovery)
+        return {"status": "OK"}
+
+    def set_radio_settings(self, json_data):
+        if not self.validate_password():
+            return {"status": "ERROR", "message": "Invalid password"}
+
+        tx_gpio = json_data["txGpio"]
+        rts_address = json_data["rtsAddress"]
+        send_repeat = json_data["sendRepeat"]
+        rfm69_enabled = json_data["rfm69Enabled"]
+        rfm69_reset_gpio = json_data["rfm69ResetGpio"]
+        rfm69_spi_channel = json_data["rfm69SpiChannel"]
+        pigpio_host = json_data["pigpioHost"]
+        pigpio_port = json_data["pigpioPort"]
+
+        LOGGER.debug(
+            "Setting radio settings: TX GPIO=%s, RTS Address=%s, "
+            "Send Repeat=%s, RFM69 Enabled=%s, RFM69 Reset GPIO=%s, "
+            "RFM69 SPI Channel=%s, Pigpio Host=%s, Pigpio Port=%s",
+            tx_gpio,
+            rts_address,
+            send_repeat,
+            rfm69_enabled,
+            rfm69_reset_gpio,
+            rfm69_spi_channel,
+            pigpio_host,
+            pigpio_port,
+        )
+        self.config.set_radio(
+            tx_gpio,
+            rts_address,
+            send_repeat,
+            rfm69_enabled,
+            rfm69_reset_gpio,
+            rfm69_spi_channel,
+            pigpio_host,
+            pigpio_port,
+        )
+
         return {"status": "OK"}
 
     def add_shutter(self, params):
@@ -421,11 +495,39 @@ class FlaskAppWrapper(threading.Thread):
             shutters[k] = self.config.shutters[k]["name"]
             durations[k] = self.config.shutters[k]["durationDown"]
         obj = {
-            "Latitude": self.config.latitude,
-            "Longitude": self.config.longitude,
             "Shutters": shutters,
             "ShutterDurations": durations,
             "Schedule": self.schedule.get_schedule_as_dict(),
+            "Settings": {
+                "LocationSettings": {
+                    "Latitude": self.config.latitude,
+                    "Longitude": self.config.longitude,
+                },
+                "WebSettings": {
+                    "UseHttps": self.config.use_https,
+                    "HttpPort": self.config.http_port,
+                    "HttpsPort": self.config.https_port,
+                    # Password not included for security reasons
+                },
+                "MqSettings": {
+                    "Server": self.config.mqtt_server,
+                    "Port": self.config.mqtt_port,
+                    "Username": self.config.mqtt_user,
+                    # Password not included for security reasons
+                    "ClientId": self.config.mqtt_client_id,
+                    "EnableDiscovery": self.config.enable_discovery,
+                },
+                "RadioSettings": {
+                    "TxGpio": self.config.tx_gpio,
+                    "RtsAddress": self.config.rts_address,
+                    "SendRepeat": self.config.send_repeat,
+                    "Rfm69Enabled": self.config.rfm69_enabled,
+                    "Rfm69ResetGpio": self.config.rfm69_reset_gpio,
+                    "Rfm69SpiChannel": self.config.rfm69_spi_channel,
+                    "PigpioHost": self.config.pigpio_host,
+                    "PigpioPort": self.config.pigpio_port,
+                },
+            },
         }
         LOGGER.debug("getConfig called, sending: " + json.dumps(obj))
         return obj

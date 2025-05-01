@@ -128,9 +128,8 @@ function App() {
         <TabsContent value="settings" className="space-y-4">
           {config && (
             <SettingsManager
-              initialLatitude={config.Latitude}
-              initialLongitude={config.Longitude}
-              onLocationSaved={refreshConfig}
+              settings={config.Settings}
+              onSettingsSaved={refreshConfig}
             />
           )}
         </TabsContent>

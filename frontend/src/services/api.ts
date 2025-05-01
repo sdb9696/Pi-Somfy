@@ -31,6 +31,21 @@ export const setLocation = async (lat: number, lng: number) => {
   return response.data;
 };
 
+export const setWebSettings = async (httpPort: number, httpsPort: number, useHttps: boolean, password: string) => {
+  const response = await api.post('setWebSettings', { httpPort, httpsPort, useHttps, password });
+  return response.data;
+};
+
+export const setMqttSettings = async (server: string, port: number, user: string, password: string, clientId: string, enableDiscovery: boolean) => {
+  const response = await api.post('setMqttSettings', { server, port, user, password, clientId, enableDiscovery });
+  return response.data;
+};
+
+export const setRadioSettings = async (txGpio: number, rtsAddress: string, sendRepeat: number, rfm69Enabled: boolean, rfm69ResetGpio: number, rfm69SpiChannel: number, pigpioHost: string, pigpioPort: number) => {
+  const response = await api.post('setRadioSettings', { txGpio, rtsAddress, sendRepeat, rfm69Enabled, rfm69ResetGpio, rfm69SpiChannel, pigpioHost, pigpioPort });
+  return response.data;
+};
+
 export const addShutter = async (name: string, duration: string) => {
   const response = await api.postForm('addShutter', { name, duration });
   return response.data;

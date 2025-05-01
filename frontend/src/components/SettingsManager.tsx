@@ -10,46 +10,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { MapPin, Globe, Radio, ArrowRightLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import MapSettings from './MapSettings';
+import { Settings } from '../types';
+import { setWebSettings as callSetWebSettings, setMqttSettings as callSetMqttSettings, setRadioSettings as callSetRadioSettings } from '../services/api';
 
 interface SettingsManagerProps {
-  initialLatitude: number;
-  initialLongitude: number;
-  onLocationSaved: () => void;
+  settings: Settings;
+  onSettingsSaved: () => void;
 }
 
-const SettingsManager = ({ initialLatitude, initialLongitude, onLocationSaved }: SettingsManagerProps) => {
-  // Web Settings state (placeholders)
+const SettingsManager = ({ settings, onSettingsSaved }: SettingsManagerProps) => {
+
   const [webSettings, setWebSettings] = useState({
-    useHttps: true,
-    httpPort: 8080,
-    httpsPort: 443,
-    password: ''
+    useHttps: settings.WebSettings.UseHttps,
+    httpPort: settings.WebSettings.HttpPort,
+    httpsPort: settings.WebSettings.HttpsPort,
+    password: ""
   });
 
-  // MQTT Settings state (placeholders)
   const [mqttSettings, setMqttSettings] = useState({
-    server: '192.168.1.x',
-    port: 1883,
-    username: '',
-    password: '',
-    clientId: 'somfy-mqtt-bridge',
-    enableDiscovery: true
+    server: settings.MqSettings.Server,
+    port: settings.MqSettings.Port,
+    username: settings.MqSettings.Username,
+    password: "",
+    clientId: settings.MqSettings.ClientId,
+    enableDiscovery: settings.MqSettings.EnableDiscovery
   });
 
-  // Radio Settings state (placeholders)
   const [radioSettings, setRadioSettings] = useState({
-    txGpio: 25,
-    rfm69Enabled: false,
-    rfm69ResetGpio: 25,
-    rfm69SpiChannel: 0,
-    pigpioHost: 'localhost',
-    pigpioPort: 8888,
-    rtsAddress: '0x279620',
-    sendRepeat: 2
+    txGpio: settings.RadioSettings.TxGpio,
+    rfm69Enabled: settings.RadioSettings.Rfm69Enabled,
+    rfm69ResetGpio: settings.RadioSettings.Rfm69ResetGpio,
+    rfm69SpiChannel: settings.RadioSettings.Rfm69SpiChannel,
+    pigpioHost: settings.RadioSettings.PigpioHost,
+    pigpioPort: settings.RadioSettings.PigpioPort,
+    rtsAddress: settings.RadioSettings.RtsAddress,
+    sendRepeat: settings.RadioSettings.SendRepeat
   });
 
-  // Placeholder handlers
   const handleWebSettingsChange = (field: string, value: any) => {
     setWebSettings(prev => ({ ...prev, [field]: value }));
   };
@@ -62,22 +61,70 @@ const SettingsManager = ({ initialLatitude, initialLongitude, onLocationSaved }:
     setRadioSettings(prev => ({ ...prev, [field]: value }));
   };
 
-  const saveWebSettings = () => {
-
-    alert('TBD: Would save web settings: ' + JSON.stringify(webSettings));
-    // TODO: Implement API call
+  const saveWebSettings = async () => {
+    try {
+      const result = await callSetWebSettings(
+        webSettings.httpPort,
+        webSettings.httpsPort,
+        webSettings.useHttps,
+        webSettings.password
+      );
+      if (result.status === 'OK') {
+        toast.success('Web settings saved successfully!');
+        onSettingsSaved();
+      } else {
+        toast.error('Error saving web settings', { description: result.message });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Error saving web settings', { description: errorMessage });
+    }
   };
 
-  const saveMqttSettings = () => {
-
-    alert('TBD: Would save MQTT settings: ' + JSON.stringify(mqttSettings));
-    // TODO: Implement API call
+  const saveMqttSettings = async () => {
+    try {
+      const result = await callSetMqttSettings(
+        mqttSettings.server,
+        mqttSettings.port,
+        mqttSettings.username,
+        mqttSettings.password,
+        mqttSettings.clientId,
+        mqttSettings.enableDiscovery
+      );
+      if (result.status === 'OK') {
+        toast.success('MQTT settings saved successfully!');
+        onSettingsSaved();
+      } else {
+        toast.error('Error saving MQTT settings', { description: result.message });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Error saving MQTT settings', { description: errorMessage });
+    }
   };
 
-  const saveRadioSettings = () => {
-
-    alert('TBD: Would save radio settings: ' + JSON.stringify(radioSettings));
-    // TODO: Implement API call
+  const saveRadioSettings = async () => {
+    try {
+      const result = await callSetRadioSettings(
+        radioSettings.txGpio,
+        radioSettings.rtsAddress,
+        radioSettings.sendRepeat,
+        radioSettings.rfm69Enabled,
+        radioSettings.rfm69ResetGpio,
+        radioSettings.rfm69SpiChannel,
+        radioSettings.pigpioHost,
+        radioSettings.pigpioPort
+      );
+      if (result.status === 'OK') {
+        toast.success('Radio settings saved successfully!');
+        onSettingsSaved();
+      } else {
+        toast.error('Error saving radio settings', { description: result.message });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Error saving radio settings', { description: errorMessage });
+    }
   };
 
   return (
@@ -91,9 +138,8 @@ const SettingsManager = ({ initialLatitude, initialLongitude, onLocationSaved }:
         </AccordionTrigger>
         <AccordionContent className="pt-4 border-t">
           <MapSettings
-            initialLatitude={initialLatitude}
-            initialLongitude={initialLongitude}
-            onLocationSaved={onLocationSaved}
+            settings={settings.LocationSettings}
+            onLocationSaved={onSettingsSaved}
           />
         </AccordionContent>
       </AccordionItem>

@@ -3,12 +3,12 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { setLocation } from '../services/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui';
+import { LocationSettings } from '../types';
 import 'leaflet/dist/leaflet.css'
 
 
 interface MapSettingsProps {
-  initialLatitude: number;
-  initialLongitude: number;
+  settings: LocationSettings;
   onLocationSaved: () => void;
 }
 
@@ -21,10 +21,10 @@ function MapEvents({ onLocationUpdate }: { onLocationUpdate: (lat: number, lng: 
   return null;
 }
 
-const MapSettings = ({ initialLatitude, initialLongitude, onLocationSaved }: MapSettingsProps) => {
+const MapSettings = ({ settings: locationSettings, onLocationSaved }: MapSettingsProps) => {
   const [position, setPosition] = useState<[number, number]>([
-    initialLatitude || 51.505,
-    initialLongitude || -0.09
+    locationSettings.Latitude || 51.505,
+    locationSettings.Longitude || -0.09
   ]);
 
   const mapRef = useRef<any>(null);
