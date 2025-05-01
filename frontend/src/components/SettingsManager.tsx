@@ -9,11 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { MapPin, Globe, Radio, ArrowRightLeft } from 'lucide-react';
+import { MapPin, Globe, Radio, ArrowRightLeft, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import MapSettings from './MapSettings';
 import { Settings } from '../types';
-import { setWebSettings as callSetWebSettings, setMqttSettings as callSetMqttSettings, setRadioSettings as callSetRadioSettings } from '../services/api';
+import {
+  setWebSettings as callSetWebSettings,
+  setMqttSettings as callSetMqttSettings,
+  setRadioSettings as callSetRadioSettings,
+  restartWebService as callRestartWebService
+} from '../services/api';
 
 interface SettingsManagerProps {
   settings: Settings;
@@ -78,6 +83,26 @@ const SettingsManager = ({ settings, onSettingsSaved }: SettingsManagerProps) =>
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error('Error saving web settings', { description: errorMessage });
+    }
+  };
+
+  const restartWebService = async () => {
+    try {
+      const result = await callRestartWebService();
+      if (result.status === 'OK') {
+        toast.success('Web service restart requested!', {
+          description: 'The page will automatically refresh in 5 seconds.'
+        });
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
+      } else {
+        toast.error('Error restarting web service', { description: result.message });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Error restarting web service', { description: errorMessage });
     }
   };
 
@@ -194,7 +219,13 @@ const SettingsManager = ({ settings, onSettingsSaved }: SettingsManagerProps) =>
               />
             </div>
 
-            <Button onClick={saveWebSettings}>Save Web Settings</Button>
+            <div className="flex gap-4">
+              <Button onClick={saveWebSettings}>Save Web Settings</Button>
+              <Button onClick={restartWebService} variant="outline" className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Restart Web
+              </Button>
+            </div>
           </div>
         </AccordionContent>
       </AccordionItem>

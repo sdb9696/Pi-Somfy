@@ -10,6 +10,7 @@ import logging.handlers
 import threading
 import click
 import subprocess
+import queue
 from typing import Optional, List, Tuple
 from pathlib import Path
 
@@ -438,6 +439,7 @@ class OperateShutters:
         self.version = "Unknown"
         self.is_stopping = False
         self.program_complete = False
+        self.message_queue = queue.Queue()
 
         if os.geteuid() != 0 and self.config.http_port < 1024:
             LOGGER.info(
@@ -456,7 +458,6 @@ class OperateShutters:
 
         self.schedule = Schedule(config=self.config)
         self.scheduler = None
-        self.web_server = None
         self.pigpio_checked = False
 
         if args.echo == True:
@@ -464,6 +465,15 @@ class OperateShutters:
 
         if args.mqtt == True:
             self.mqtt = MQTT(kwargs={"shutter": self.shutter, "config": self.config})
+
+        self.web_server = FlaskAppWrapper(
+            name="WebServer",
+            static_url_path=Path(__file__).parent.parent.parent / "html",
+            shutter=self.shutter,
+            schedule=self.schedule,
+            config=self.config,
+            message_queue=self.message_queue,
+        )
 
         self.process_command(args)
 
@@ -676,14 +686,11 @@ class OperateShutters:
         self.schedule.load_schedule_from_config()
         self._start_scheduler()
         self._start_optional_services(args)
-        self.web_server = FlaskAppWrapper(
-            name="WebServer",
-            static_url_path=Path(__file__).parent.parent.parent / "html",
-            shutter=self.shutter,
-            schedule=self.schedule,
-            config=self.config,
-        )
-        self.web_server.daemon = True
+        self.web_server.start()
+
+    def _restart_web_server(self):
+        """Restart the web server."""
+        self.web_server.shutdown()
         self.web_server.start()
 
     # ---------------------operateShutters::Close----------------------------------------
@@ -721,6 +728,19 @@ class OperateShutters:
         except:
             pass
 
+    def process_queue_message(self, message):
+        """Process messages child thread."""
+        if message == "restart_web":
+            LOGGER.info("Received restart command from web server")
+            self._restart_web_server()
+        else:
+            LOGGER.warning(f"Unknown message from child thread: {message}")
+
     def loop_until_complete(self):
         while not self.program_complete:
-            time.sleep(0.01)
+            try:
+                message = self.message_queue.get(block=True, timeout=0.5)
+                self.process_queue_message(message)
+                self.message_queue.task_done()
+            except queue.Empty:
+                pass

@@ -2,7 +2,10 @@
 import logging
 import threading
 import re
+import queue
+
 from .config import MyConfig
+from werkzeug.serving import make_server
 
 try:
     from flask import Flask, request, Response, json
@@ -38,7 +41,7 @@ class EndpointAction:
         return self.response
 
 
-class FlaskAppWrapper(threading.Thread):
+class FlaskAppWrapper:
     app = None
     CriticalLock = None
 
@@ -49,14 +52,16 @@ class FlaskAppWrapper(threading.Thread):
         shutter=None,
         schedule=None,
         config: MyConfig = None,
+        message_queue: queue.Queue = None,
     ):
-        threading.Thread.__init__(self, name="Web Server")
-
         logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
         self.shutter = shutter
         self.schedule = schedule
         self.config = config
+        self.message_queue = message_queue
+        self.server = None
+        self.server_thread = None
 
         self.app = Flask(
             import_name=name, static_url_path="", static_folder=static_url_path
@@ -130,6 +135,7 @@ class FlaskAppWrapper(threading.Thread):
                 "addShutter",
                 "editShutter",
                 "deleteShutter",
+                "restartWebService",
             ]:
                 LOGGER.info(
                     'processing Command "'
@@ -572,26 +578,55 @@ class FlaskAppWrapper(threading.Thread):
         ctx.verify_mode = ssl.CERT_NONE
         return ctx
 
-    def run(self):
+    def restart_web_service(self, params):
+        """Restart the web service after configuration changes."""
+        if not self.validate_password():
+            return {"status": "ERROR", "message": "Invalid password"}
+
+        if not self.message_queue:
+            return {
+                "status": "ERROR",
+                "message": "No message queue available to signal restart to operator",
+            }
+
+        LOGGER.info("Restarting web service...")
+
+        def perform_restart():
+            self.message_queue.put("restart_web")
+
+        threading.Timer(1.0, perform_restart).start()
+        return {"status": "OK", "message": "Web service is restarting..."}
+
+    def shutdown(self):
+        if not self.server or not self.server_thread:
+            LOGGER.warning("Web server not running, cannot shutdown")
+            return
+
+        LOGGER.info("Shutting down web server...")
+        self.server.shutdown()
+        self.server_thread.join()
+        LOGGER.info("Web server shut down")
+        self.server = None
+        self.server_thread = None
+
+    def start(self):
         if self.config.use_https:
-            LOGGER.info(
-                "Starting secure WebServer on Port " + str(self.config.https_port)
-            )
-            self.app.run(
-                host="0.0.0.0",
-                port=self.config.https_port,
-                threaded=True,
-                ssl_context=self.generate_adhoc_ssl_context(),
-                use_reloader=False,
-                debug=False,
-            )
+            port = self.config.https_port
+            ssl_context = self.generate_adhoc_ssl_context()
         else:
-            LOGGER.info("Starting WebServer on Port " + str(self.config.http_port))
-            self.app.run(
-                host="0.0.0.0",
-                threaded=True,
-                port=self.config.http_port,
-                use_reloader=False,
-                debug=False,
-            )
-        LOGGER.info("Stopping WebServer")
+            port = self.config.http_port
+            ssl_context = None
+
+        self.server = make_server(
+            host="0.0.0.0",
+            port=port,
+            app=self.app,
+            threaded=True,
+            ssl_context=ssl_context,
+        )
+        self.server_thread = threading.Thread(
+            target=self.server.serve_forever, name="Web Server", daemon=True
+        )
+        LOGGER.info("Starting web server on port %s...", port)
+        self.server_thread.start()
+        LOGGER.info("Web server started")

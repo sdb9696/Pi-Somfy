@@ -76,4 +76,9 @@ export const deleteSchedule = async (id: string) => {
   return response.data;
 };
 
+export const restartWebService = async () => {
+  const response = await api.post('restartWebService');
+  return response.data;
+};
+
 export default api;
