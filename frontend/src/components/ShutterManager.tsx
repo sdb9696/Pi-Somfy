@@ -11,8 +11,21 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { X, Save, Link, Pencil, Trash2, Clock, ArrowBigUp, ArrowBigDown, Square, Plus, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1, Wrench, XCircle, ArrowUp, ArrowDown, ArrowUpDown, CircleArrowDown, CircleArrowUp, Target } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { X, Save, Link, Pencil, Trash2, Clock, Info, ArrowBigUp, ArrowBigDown, Square, Plus, Play, Pause, Sunrise, Sunset, CalendarSyncIcon, Calendar1, Wrench, XCircle, ArrowUp, ArrowDown, ArrowUpDown, CircleArrowDown, CircleArrowUp, Target } from 'lucide-react';
 import { Button, Switch, Checkbox, Input, Label, Select, Slider, SelectItem, SelectContent, SelectTrigger, SelectValue } from '@/components/ui';
+import pgminstr from '../assets/images/pgminstr.png';
+import { Separator } from '@/components/ui/separator';
 
 interface ShutterManagerProps {
   // Update types to match actual data structure
@@ -259,9 +272,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                 <Dialog onOpenChange={(open) => {
                   if (open) {
                     handleAddShutter()
-                  }
-                  else
-                  {
+                  } else {
                     setAddingShutter(false)
                   }
                 }}>
@@ -270,17 +281,39 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                       <Save className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-[90vw] sm:max-w-[600px] overflow-y-auto max-h-[90vh]">
                     <DialogHeader>
                       <DialogTitle>Time to program your new shutter...</DialogTitle>
                     </DialogHeader>
-                      <img width="216px" height="369px" src="pgminstr.png"/>
-                      Did your window covering "jog"? If so, you are all set and your window covering has now learned your new remote. Proceed to click the "It worked!!" button below
-                      If your window covering did not "jog", let's try to program it again. A previously programmed remote can be used in order to add a new remote or channel to the Motorized Window Covering.
-                      If a Telis Transmitter (also known as another Remote) has not been previously programmed, please refer to the installation instructions of the relevant RTS
-                      motorized window covering
-                      Using the previously programmed Telis remote, press and hold the programming
-                      button on back of remote until window covering "jogs". Then proceed to press the "Try Programming Again" button below.
+                    <div className="flex flex-col sm:flex-row items-center">
+                      <div className="flex-1 space-y-4">
+                        <p className="text-sm">
+                          Did your window covering "jog"? If so, you are all set and your window covering has now learned your new remote. Proceed to click the "It worked!!" button below.
+                        </p>
+                        <Separator />
+                        <p className="text-sm">
+                          If your window covering did not "jog", let's try to program it again. A previously programmed{' '}
+                          <span className="inline-flex items-center whitespace-nowrap mr-1">
+                            remote
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" className="size-4 p-0 m-0 pb-2">
+                                  <Info className="m-0" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent>
+                            If a Telis Transmitter (also known as another Remote) has not been previously programmed, please refer to the installation instructions of the relevant RTS motorized window covering.
+                            </PopoverContent>
+                          </Popover>
+                          </span>
+                          can be used in order to add a new remote or channel to the Motorized Window Covering.
+                        </p>
+                        <p className="text-sm">
+                          Using the previously programmed Telis remote, press and hold the programming button on the back of the remote until the window covering "jogs". Then proceed to press the "Try Programming Again" button below.
+                        </p>
+                      </div>
+                      <img src={pgminstr} alt="Programming instructions" className="sm:ml-6 w-[150px] mt-4 sm:mt-0" />
+                    </div>
                     <DialogFooter>
                       <DialogClose asChild>
                         <Button variant="default">It worked!!!</Button>
@@ -289,7 +322,7 @@ const ShutterManager = ({ shutters, shutterDurations, onShutterChange }: Shutter
                         if (addedShutter) {
                           handleSendProgram(addedShutter)
                         }
-                      }}>Try Programming again</Button>
+                      }}>Try Programming Again</Button>
                       <DialogClose asChild>
                         <Button variant="destructive" onClick={() => handleAbortAdd()}>Abort</Button>
                       </DialogClose>
