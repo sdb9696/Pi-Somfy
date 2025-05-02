@@ -6,15 +6,22 @@ import logging
 from tomlkit import dumps, parse, table, nl, document, comment
 from pathlib import Path
 from contextlib import contextmanager
-from collections import namedtuple
-from typing import Optional, Union
+from typing import Optional, Union, Any, TypeVar, Generator, NamedTuple
 from configparser import RawConfigParser
+from tomlkit import TOMLDocument
 
 LOGGER = logging.getLogger(__name__)
 
-ConfigParam = namedtuple(
-    "ConfigParam", ["name", "type", "section", "doc", "variable_name"]
-)
+
+class ConfigParam(NamedTuple):
+    name: str
+    type: type
+    section: str
+    doc: list[str]
+    variable_name: str
+
+
+_T = TypeVar("_T", float, int, bool, str)
 
 CONFIG_PARAMETERS = [
     # General parameters
@@ -217,7 +224,7 @@ class MyConfig:
     settings and JSON for shutters/scheduler settings.
     """
 
-    def __init__(self, location=None):
+    def __init__(self, location: Optional[Union[str, Path]] = None) -> None:
         """Initialize configuration manager.
 
         Args:
@@ -251,7 +258,7 @@ class MyConfig:
         self.CriticalLock = threading.Lock()
         self.InitComplete = False
 
-        # Default values
+        # Default values with type hints
         self.rfm69_reset_gpio = 25
         self.rfm69_spi_channel = 0
         self.rfm69_enabled = False
@@ -262,7 +269,7 @@ class MyConfig:
         self.log_to_console = True
         self.LogLevel = logging.DEBUG
         self.latitude = 51.4769
-        self.longitude = 0
+        self.longitude = 0.0
         self.send_repeat = 2
         self.use_https = False
         self.http_port = 8080
@@ -275,9 +282,9 @@ class MyConfig:
         self.mqtt_port = 1883
         self.mqtt_user = "xxxxxxx"
         self.enable_discovery = True
-        self.shutters = {}
-        self.shutters_by_name = {}
-        self.schedule = {}
+        self.shutters: dict[str, dict[str, Any]] = {}
+        self.shutters_by_name: dict[str, str] = {}
+        self.schedule: dict[str, dict[str, Any]] = {}
         self.password = ""
 
         self.InitComplete = True
@@ -288,7 +295,7 @@ class MyConfig:
         new_toml_exists = self.toml_path.exists()
         return old_ini_exists and not new_toml_exists
 
-    def _load_legacy_config(self, legacy_config_filename: str):
+    def _load_legacy_config(self, legacy_config_filename: str) -> bool:
         config = RawConfigParser()
         config.read(legacy_config_filename)
 
@@ -337,14 +344,17 @@ class MyConfig:
                             intermediate_pos = int(intermediate_pos)
                         except Exception:
                             intermediate_pos = None
-                    if (intermediate_pos != None) and (
-                        (intermediate_pos < 0) or (intermediate_pos > 100)
+                    if (
+                        intermediate_pos is not None
+                        and ((ip := int(intermediate_pos)) is not None)
+                        and ((ip < 0) or (ip > 100))
                     ):
                         intermediate_pos = None
                     # If only one duration is specified, use it for both down and up durations.
                     if not up_duration:
                         up_duration = down_duration
-                    self.shutters[key] = {
+
+                    shutter = {
                         "name": name,
                         "active": True,
                         "code": param2,
@@ -352,6 +362,7 @@ class MyConfig:
                         "durationUp": int(up_duration),
                         "intermediatePosition": intermediate_pos,
                     }
+                    self.shutters[key] = shutter
                     self.shutters_by_name[name] = key
             except Exception as e1:
                 LOGGER.exception(
@@ -365,16 +376,16 @@ class MyConfig:
         schedules = config.items("Scheduler")
         for key, value in schedules:
             try:
-                param = value.split(",")
-                if param[0].strip().lower() in ("active", "paused"):
+                schedule_param = value.split(",")
+                if schedule_param[0].strip().lower() in ("active", "paused"):
                     self.schedule[key] = {
-                        "active": param[0],
-                        "repeatType": param[1],
-                        "repeatValue": param[2].split("|"),
-                        "timeType": param[3],
-                        "timeValue": param[4],
-                        "shutterAction": param[5],
-                        "shutterIds": param[6].split("|"),
+                        "active": schedule_param[0],
+                        "repeatType": schedule_param[1],
+                        "repeatValue": schedule_param[2].split("|"),
+                        "timeType": schedule_param[3],
+                        "timeValue": schedule_param[4],
+                        "shutterAction": schedule_param[5],
+                        "shutterIds": schedule_param[6].split("|"),
                     }
             except Exception as e1:
                 LOGGER.exception(
@@ -387,23 +398,33 @@ class MyConfig:
 
         return True
 
-    # ---------------------MyConfig::ReadValue-----------------------------------
     def read_value(
-        self, config: RawConfigParser, section: str, key: str, return_type: type
-    ):
-        if return_type == bool:
-            return config.getboolean(section, key)
-        if return_type == float:
-            return config.getfloat(section, key)
-        if return_type == int:
-            return config.getint(section, key)
-        return config.get(section, key)
+        self, config: RawConfigParser, section: str, key: str, return_type: type[_T]
+    ) -> _T:
+        """Read and convert a value from config parser.
 
-    def _migrate_from_ini(self):
+        Args:
+            config: Configuration parser instance
+            section: Section name in config
+            key: Key name in section
+            return_type: Type to convert the value to
+
+        Returns:
+            Any: Converted value according to return_type
+        """
+        if return_type is bool:
+            return return_type(config.getboolean(section, key))
+        if return_type == float:
+            return return_type(config.getfloat(section, key))
+        if return_type == int:
+            return return_type(config.getint(section, key))
+        return return_type(config.get(section, key))
+
+    def _migrate_from_ini(self) -> None:
         """Migrate configuration from old INI format to new TOML/JSON format."""
         LOGGER.info("Migrating old INI configuration to new TOML/JSON format")
 
-        self._load_legacy_config(self.old_ini_path)
+        self._load_legacy_config(str(self.old_ini_path))
 
         doc = self._create_new_toml()
         toml_dump = dumps(doc)
@@ -419,13 +440,13 @@ class MyConfig:
 
         LOGGER.info("Migrated old INI configuration to new TOML/JSON format")
 
-    def _create_new_toml(self):
+    def _create_new_toml(self) -> TOMLDocument:
         """Create new TOML file."""
         doc = document()
         doc.add(comment("Pi-Somfy Configuration File."))
         doc.add(nl())
 
-        section_params = {}
+        section_params: dict[str, list[ConfigParam]] = {}
         for param in CONFIG_PARAMETERS:
             if param.section not in section_params:
                 section_params[param.section] = []
@@ -444,12 +465,12 @@ class MyConfig:
             doc.add(nl())
         return doc
 
-    def _load_new_format(self):
+    def _load_new_format(self) -> bool:
         """Load configuration from new TOML and JSON files."""
         # Load TOML for General and MQTT
         with open(self.toml_path, "r") as f:
             toml_string = f.read()
-        toml = parse(toml_string)
+        toml: dict[str, Any] = parse(toml_string)
 
         for param in CONFIG_PARAMETERS:
             try:
@@ -469,6 +490,8 @@ class MyConfig:
             self.shutters_by_name = {v["name"]: k for k, v in self.shutters.items()}
             self.schedule = json_dict["schedule"]
 
+        return True
+
     def load_config(self) -> bool:
         """Load configuration data.
 
@@ -486,7 +509,7 @@ class MyConfig:
             LOGGER.exception(f"Error loading config: {str(e)}")
             return False
 
-    def set_location(self, lat: float, lng: float):
+    def set_location(self, lat: float, lng: float) -> None:
         """Set location coordinates and save to config.
 
         Args:
@@ -496,7 +519,7 @@ class MyConfig:
         with self.CriticalLock:
             with open(self.toml_path, "r") as f:
                 toml_string = f.read()
-            toml = parse(toml_string)
+            toml: dict[str, Any] = parse(toml_string)
             toml["general"]["Latitude"] = lat
             toml["general"]["Longitude"] = lng
             toml_dump = dumps(toml)
@@ -505,7 +528,9 @@ class MyConfig:
         self.latitude = lat
         self.longitude = lng
 
-    def set_web(self, http_port: int, https_port: int, use_https: bool, password: str):
+    def set_web(
+        self, http_port: int, https_port: int, use_https: bool, password: str
+    ) -> None:
         """Set web server configuration and save to config.
 
         Args:
@@ -516,7 +541,7 @@ class MyConfig:
         with self.CriticalLock:
             with open(self.toml_path, "r") as f:
                 toml_string = f.read()
-            toml = parse(toml_string)
+            toml: dict[str, Any] = parse(toml_string)
             toml["general"]["HTTPPort"] = http_port
             toml["general"]["HTTPSPort"] = https_port
             toml["general"]["UseHttps"] = use_https
@@ -537,7 +562,7 @@ class MyConfig:
         mqtt_password: str,
         mqtt_client_id: str,
         enable_discovery: bool,
-    ):
+    ) -> None:
         """Set MQTT configuration and save to config.
 
         Args:
@@ -550,7 +575,7 @@ class MyConfig:
         with self.CriticalLock:
             with open(self.toml_path, "r") as f:
                 toml_string = f.read()
-            toml = parse(toml_string)
+            toml: dict[str, Any] = parse(toml_string)
             toml["mqtt"]["MQTT_Server"] = mqtt_server
             toml["mqtt"]["MQTT_Port"] = mqtt_port
             toml["mqtt"]["MQTT_User"] = mqtt_user
@@ -577,7 +602,7 @@ class MyConfig:
         rfm69_spi_channel: int,
         pigpio_host: str,
         pigpio_port: int,
-    ):
+    ) -> None:
         """Set radio configuration and save to config.
 
         Args:
@@ -588,7 +613,7 @@ class MyConfig:
         with self.CriticalLock:
             with open(self.toml_path, "r") as f:
                 toml_string = f.read()
-            toml = parse(toml_string)
+            toml: dict[str, Any] = parse(toml_string)
             toml["general"]["TXGPIO"] = tx_gpio
             toml["general"]["RTS_Address"] = rts_address
             toml["general"]["SendRepeat"] = send_repeat
@@ -609,7 +634,7 @@ class MyConfig:
         self.pigpio_host = pigpio_host
         self.pigpio_port = pigpio_port
 
-    def set_shutter_code(self, shutter_id: str, code: int):
+    def set_shutter_code(self, shutter_id: str, code: int) -> None:
         """Set rolling code for a shutter and save to config.
 
         Args:
@@ -623,7 +648,7 @@ class MyConfig:
             with open(self.json_path, "w") as f:
                 json.dump(json_dict, f, indent=2)
 
-    def set_shutter(self, shutter_id: str, name: str, duration: str):
+    def set_shutter(self, shutter_id: str, name: str, duration: str) -> None:
         """Set shutter name and duration and save to config.
 
         Args:
@@ -643,13 +668,12 @@ class MyConfig:
             json_dict["shutters"][shutter_id] = shutter
 
         self.shutters_by_name.pop(original_name, None)
-        self.shutters_by_name[name] = shutter
+        self.shutters_by_name[name] = shutter_id
 
-    def add_shutter(self, name: str, duration: str):
+    def add_shutter(self, name: str, duration: str) -> None:
         """Set shutter name and duration and save to config.
 
         Args:
-
             name: Shutter name
             duration: Shutter duration
         """
@@ -680,7 +704,7 @@ class MyConfig:
         self.shutters[shutter_id] = shutter
 
     @contextmanager
-    def json_config(self):
+    def json_config(self) -> Generator[dict[str, Any], None, None]:
         # Code to acquire resource, e.g.:
         with self.CriticalLock:
             with open(self.json_path, "r") as f:
@@ -691,7 +715,7 @@ class MyConfig:
             with open(self.json_path, "w") as f:
                 json.dump(json_dict, f, indent=2)
 
-    def set_shutter_active(self, shutter_id: str, active: bool):
+    def set_shutter_active(self, shutter_id: str, active: bool) -> None:
         """Set shutter active status and save to config.
 
         Args:
@@ -715,7 +739,7 @@ class MyConfig:
         time_value: str,
         shutter_action: str,
         shutter_ids: str,
-    ):
+    ) -> None:
         """Set schedule and save to config.
 
         Args:
